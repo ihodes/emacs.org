@@ -1,0 +1,527 @@
+#+TITLE: Emacs Configuration
+
+* TODO incl. gittit
+* TODO incl. python-settings
+* TODO incl. clojure-settings
+
+* Init
+  In slow transition to a literate emacs configuration. This is basically a
+  straight port of my existing config to ~org-mode~.
+
+  #+name: init
+  #+BEGIN_SRC emacs-lisp
+    (add-to-list 'load-path "~/.emacs.d/lisp")
+    (add-to-list 'load-path "~/.emacs.d/lisp/settings")
+
+    ;; Need to to this for our custom forked EIN.
+    (add-to-list 'load-path "~/.emacs.d/lisp/ein-lisp")
+    (add-hook 'python-mode-hook
+              '(progn
+                 (require 'ein)))
+
+    (load-theme 'tango-dark)
+  #+END_SRC
+* Packages
+  #+name: packages
+  #+BEGIN_SRC emacs-lisp
+    (require 'package)
+
+    (add-to-list 'package-archives
+      '("marmalade" . "http://marmalade-repo.org/packages/") t)
+    (add-to-list 'package-archives
+      '("melpa" . "http://melpa.milkbox.net/packages/") t)
+    (add-to-list 'package-archives
+      '("melpa-stable" . "http://melpa-stable.milkbox.net/packages/") t)
+
+    ;; Loads the packages installed via the manager.
+    (package-initialize)
+
+    ;; Install standard packages if not already installed
+    (defvar ihodes/packages
+      '(haskell-mode         ;; haskell major mode
+        tuareg               ;; ocaml major more
+        highlight-symbol     ;; allows us to highlight symbols
+        rainbow-delimiters   ;; parens have different colors
+        magit gist magit-gh-pulls ;; git & github modes
+        python               ;; python major mode
+        cider clojure-mode   ;; clojure modes
+        paredit              ;; paren god-mode for all lisps
+        smart-mode-line      ;; a beautiful mode line
+        sass-mode rainbow-mode scss-mode markdown-mode
+        flx-ido projectile   ;; project and file navigation
+        undo-tree            ;; amazing undo control with history trees
+        company              ;; better auto-complete
+        company-anaconda     ;; python autocomplete
+        ag flycheck          ;; search & syntax/compiler checking
+        exec-path-from-shell
+        browse-kill-ring     ;; buffer to search kill-ring
+        expand-region        ;; better form selection
+        multiple-cursors     ;; magic
+        coffee-mode haml-mode yaml-mode
+        skewer-mode          ;; inject JS into a browser
+        inf-ruby
+        web-mode             ;; easy multi-mode for the web
+        scala-mode2 ensime
+        yasnippet)
+      "Packages which should always be installed.")
+
+    ;; Defer this, because this can kill the emacs.
+    (defun ihodes/install-packages ()
+      "Install all listed packages."
+      (progn
+        (package-refresh-contents)
+        (dolist (p ihodes/packages)
+          (when (not (package-installed-p p))
+            (package-install p)))))
+
+    ;; (ihodes/install-packages)
+  #+END_SRC
+* Modes
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (require 'flycheck)
+    (add-hook 'after-init-hook #'global-flycheck-mode)
+
+    ;;; Enable paredit for all my lovely lisps.
+    (dolist (x '(scheme emacs-lisp lisp clojure))
+      (add-hook
+       (intern (concat (symbol-name x) "-mode-hook")) 'paredit-mode))
+
+    ;; The divine web-mode (multiple mode mode that works--mostly).
+    (setq web-mode-engines-alist '(("erb" . "\\.ejs\\'")))
+    (add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.jsx\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.jsp\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.as[cp]x\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.erb\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.ejs\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.mustache\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.djhtml\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+
+    ;; smart mode line
+    (setq sml/no-confirm-load-theme t)
+    (sml/setup)
+    (sml/apply-theme 'dark)
+    (add-to-list 'sml/replacer-regexp-list '("^~/workspace/" ":W:") t)
+    (add-to-list 'sml/hidden-modes " Undo-Tree")
+    (add-to-list 'sml/hidden-modes " MRev")
+    (add-to-list 'sml/hidden-modes " Paredit")
+    (add-to-list 'sml/hidden-modes " hl-s")
+    (add-to-list 'sml/hidden-modes " Helm")
+    (add-to-list 'sml/hidden-modes " company")
+    (add-to-list 'sml/hidden-modes " yas")
+
+    ;; js hooks
+    (require 'flycheck)
+    (add-hook 'js-mode-hook 'flycheck-mode)
+    (flycheck-define-checker jsxhint-checker
+      "A JSX syntax and style checker based on JSXHint."
+      :command ("jsxhint" (config-file "--config=" jshint-configuration-path) source)
+      :error-patterns ((error line-start (1+ nonl) ": line " line ", col " column ", " (message) line-end))
+      :modes (js-mode))
+
+    ;; Have to remove the html-mode default; it was interfering with web-mode.
+    (setq auto-mode-alist (remove (rassoc 'html-mode auto-mode-alist) auto-mode-alist))
+
+    (require 'cider)
+
+    ;; Auto complete
+    ;; (require 'auto-complete-config)
+    ;; (ac-config-default)
+    ;; (setq ac-show-menu-immediately-on-auto-complete t)
+    ;; (eval-after-load "auto-complete" '(add-to-list 'ac-modes 'cider-mode))
+
+    ;; company-mode
+    (require 'company)
+    (add-hook 'after-init-hook 'global-company-mode)
+    (add-hook 'after-init-hook
+              (lambda () (add-to-list 'company-backends 'company-anaconda)))
+
+    ;; Enable ENSIME with Scala
+    (require 'ensime)
+    (add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
+    (setq ensime-sem-high-faces ;; enable semantic highlighting
+      '(
+       (var . (:foreground "#ff2222"))
+       (val . (:foreground "#dddddd"))
+       (varField . (:foreground "#ff3333"))
+       (valField . (:foreground "#dddddd"))
+       (functionCall . (:foreground "#84BEE3"))
+       (param . (:foreground "#ffffff"))
+       (class . font-lock-type-face)
+       (trait . (:foreground "#084EA8"))
+       (object . (:foreground "#026DF7"))
+       (package . font-lock-preprocessor-face)))
+
+    ;; AVDL and Avro mode hacks.
+    (add-to-list 'auto-mode-alist '("\\.avpr?\\'" . js-mode))
+    (add-to-list 'auto-mode-alist '("\\.avdl?\\'" . c-mode))
+
+    ;; Enables the dirtree mode, useful for navigating larger projects.
+    (autoload 'dirtree "dirtree" "Add directory to tree view" t)
+
+    ;; Some plaintext+ modes.
+    (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
+    (add-to-list 'auto-mode-alist '("\\.markdown\\'" . markdown-mode))
+    (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
+
+    ;; Highlight ag searched terms.
+    (setq ag-highlight-search t)
+
+    ;; recentf config
+    (require 'recentf)
+    (recentf-mode t)
+    (setq recentf-max-saved-items 50)
+
+    ;; Haskell indents
+    (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation)
+
+    ;; Settings files for more hacked settings.
+    ;; (require 'python-settings)
+    ;; (require 'clojure-settings)
+    ;;(require 'helm-settings)
+
+    ;; Gittit
+    ;; (require 'gittit)
+
+    ;; Github pull mode c.f. http://endlessparentheses.com/merging-github-pull-requests-from-emacs.html
+    (eval-after-load 'magit
+      '(define-key magit-mode-map "#gg"
+         'endless/load-gh-pulls-mode))
+
+    ;; projectile
+    (projectile-global-mode)
+    (setq projectile-mode-line '(:eval (format " @:%s" (projectile-project-name))))
+
+    (defun endless/load-gh-pulls-mode ()
+      "Start `magit-gh-pulls-mode' only after a manual request."
+      (interactive)
+      (require 'magit-gh-pulls)
+      (add-hook 'magit-mode-hook 'turn-on-magit-gh-pulls)
+      (magit-gh-pulls-mode 1)
+      (magit-gh-pulls-reload))
+
+    ;; rainbow parens
+    (add-hook 'prog-mode-hook 'rainbow-delimiters-mode)
+
+    ;; highlighting
+    ;; (require 'highlight-symbol)
+    ;; (add-hook 'prog-mode-hook 'highlight-symbol-mode)
+    ;; (setq highlight-symbol-idle-delay 0)
+
+    ;; enable WindMove for better window nav: shift+arrow keys
+    (windmove-default-keybindings)
+
+    ;; Le Coq
+    (load-file "/usr/local/share/emacs/site-lisp/ProofGeneral/generic/proof-site.el")
+    (autoload 'coq-mode "coq" "Major mode for editing Coq vernacular." t)
+    (setq auto-mode-alist (cons '("\\.v$" . coq-mode) auto-mode-alist))
+    (eval-after-load 'coq-mode '(define-key coq-mode-map (kbd "C-c C-.") 'proof-goto-point))
+
+    ;; https://github.com/purcell/exec-path-from-shell
+    (when (memq window-system '(mac ns))
+      (exec-path-from-shell-initialize))
+
+    ;; SQLi
+    (add-hook 'sql-interactive-mode-hook '(lambda () (toggle-truncate-lines t)))
+
+    ;; yasnippet
+    (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
+    (yas-global-mode 1)
+  #+END_SRC
+* Org
+#+name: org-mode
+#+BEGIN_SRC emacs-lisp
+  (setq org-directory "~/org/")
+  (setq org-mobile-directory "~/Dropbox/Apps/MobileOrg")
+
+  (org-babel-do-load-languages
+   (quote org-babel-load-languages)
+   (quote ((emacs-lisp . t)
+           (dot . t)
+           (ditaa . t)
+           (R . t)
+           (python . t)
+           (ruby . t)
+           (gnuplot . t)
+           (clojure . t)
+           (sh . t)
+           (ledger . t)
+           (org . t)
+           (latex . t))))
+#+END_SRC
+* Functions
+  #+name: functions
+  #+BEGIN_SRC emacs-lisp
+    (defun clear-shell-buffer ()
+      "Clear the current buffer"
+      (interactive)
+      (let ((comint-buffer-maximum-size 0))
+         (comint-truncate-buffer)))
+
+    (defun osx:copy-region (start end)
+      "Copy the region to OSX's clipboard."
+      (interactive (list (region-beginning) (region-end)))
+      (shell-command-on-region start end "pbcopy")
+      (message "Copied to OSX clipboard!"))
+
+    (defun osx:paste ()
+      "Copy the region to OSX's clipboard."
+      (interactive)
+      (insert (shell-command-to-string "pbpaste"))
+      (message "Pasted from OSX clipboard!"))
+
+    (defun osx:copy-kill ()
+      "Copy the current kill text to OSX's clipboard."
+      (interactive)
+      (with-temp-buffer
+        (yank)
+        (shell-command-on-region 1 (point-max) "pbcopy")))
+
+    (defun set-exec-path-from-shell-PATH ()
+      (let ((path-from-shell (replace-regexp-in-string
+                              "[ \t\n]*$"
+                              ""
+                              (shell-command-to-string "$SHELL --login -i -c 'echo $PATH'"))))
+        (setenv "PATH" path-from-shell)
+        (setq eshell-path-env path-from-shell) ; for eshell users
+        (setq exec-path (split-string path-from-shell path-separator))))
+
+    ;;http://emacsredux.com/blog/2013/05/22/smarter-navigation-to-the-beginning-of-a-line/
+    (defun smarter-move-beginning-of-line (arg)
+      "Move point back to indentation of beginning of line.
+
+    Move point to the first non-whitespace character on this line.
+    If point is already there, move to the beginning of the line.
+    Effectively toggle between the first non-whitespace character and
+    the beginning of the line.
+
+    If ARG is not nil or 1, move forward ARG - 1 lines first.  If
+    point reaches the beginning or end of the buffer, stop there."
+      (interactive "^p")
+      (setq arg (or arg 1))
+
+      ;; Move lines first
+      (when (/= arg 1)
+        (let ((line-move-visual nil))
+          (forward-line (1- arg))))
+
+      (let ((orig-point (point)))
+        (back-to-indentation)
+        (when (= orig-point (point))
+          (move-beginning-of-line 1))))
+  #+END_SRC
+* Defaults
+  #+name: defaults
+  #+BEGIN_SRC emacs-lisp
+    (progn 
+           (global-undo-tree-mode)
+           (column-number-mode t)
+           (ido-mode t)
+           (setq ido-enable-flex-matching t)
+           (setq kill-ring-max 500)
+           (setq js-indent-level 2)
+           (setq tramp-default-method "ssh")
+           (blink-cursor-mode 0)
+           (setq initial-scratch-message "")
+           (setq inhibit-startup-message t)
+           (setq inhibit-startup-echo-area-message "isaachodes")
+
+           ;; in emacs 24.4 (toggle-frame-fullscreen)
+           (menu-bar-mode -1)
+           (when (fboundp 'tool-bar-mode)
+             (tool-bar-mode -1))
+           (when (fboundp 'scroll-bar-mode)
+             (scroll-bar-mode -1))
+
+           (require 'uniquify)
+           (setq-default uniquify-buffer-name-style 'forward)
+
+           (require 'saveplace)
+           (setq-default save-place t)
+
+           ;; Show trailing whitespace.
+           (setq-default show-trailing-whitespace t)
+           ;; ...and delete them on save.
+           ;; (add-hook 'before-save-hook 'delete-trailing-whitespace)
+
+           (setq-default auto-save-file-name-transforms
+                 `((".*" ,temporary-file-directory t)))
+
+           (setq auto-save-default nil)
+
+           (show-paren-mode 1)
+           (setq-default fill-column 80)
+           (setq-default indent-tabs-mode nil)
+           (setq-default enable-recursive-minibuffers t)
+           (setq-default apropos-do-all t
+                         save-place-file (concat user-emacs-directory "places")
+                         backup-directory-alist `(("." . ,(concat user-emacs-directory
+                                                          "backups"))))
+
+           (when window-system (set-exec-path-from-shell-PATH))
+
+           (set-face-attribute 'mode-line nil
+                               :foreground "gray100" :background "gray10"
+                               :inverse-video nil
+                               :box '(:line-width 6 :color "gray20" :style nil))
+           (set-face-attribute 'mode-line-inactive nil
+                               :foreground "gray30" :background "gray10"
+                               :inverse-video nil
+                               :box '(:line-width 6 :color "gray10" :style nil)))
+  #+END_SRC
+* Bindings
+  #+name: bindings
+  #+BEGIN_SRC emacs-lisp
+    (global-set-key (kbd "C-x C-b") 'ibuffer)
+
+    (global-set-key (kbd "C-s") #'isearch-forward-regexp)
+    (global-set-key (kbd "C-r") #'isearch-backward-regexp)
+
+    (global-set-key (kbd "C-c r") #'replace-regexp)
+
+    (global-set-key (kbd "C-x C-u") #'undo-tree-undo)
+    (global-set-key (kbd "C-x C-r") #'undo-tree-redo)
+
+    (global-set-key (kbd "C-x g") #'magit-status)
+    ;; (global-set-key (kbd "C-x C-g") 'browse-github-url-for-line)
+    (global-set-key (kbd "s-p") #'projectile-commander)
+
+    (global-set-key (kbd "<f1>") #'eshell)
+    (global-set-key (kbd "<f2>") #'ag-project)
+    (global-set-key (kbd "<f3>") #'occur)
+    (global-set-key (kbd "<f4>") #'ido-recentf-open)
+    (global-set-key (kbd "<f5>") #'highlight-symbol-at-point)
+    (global-set-key (kbd "<f6>") #'revert-this-buffer)
+
+    (global-set-key (kbd "s--") #'er/contract-region)
+    (global-set-key (kbd "s-=") #'er/expand-region)
+
+    (global-set-key (kbd "C-c M-w") #'whitespace-mode)
+
+    (global-set-key (kbd "M-j") '(lambda () (interactive) (join-line -1)))
+
+    (global-set-key (kbd "C-x t") '(lambda () (interactive) (insert "TODO(ihodes): ")))
+
+    (define-key global-map (kbd "C-c r") #'vr/replace)
+    (define-key global-map (kbd "C-c q") #'vr/query-replace)
+
+    (global-set-key (kbd "s-c") #'vr/mc-mark)
+    (global-set-key (kbd "M-s-≥") #'mc/mark-next-lines)
+
+    (global-set-key (kbd "C-x w") #'delete-trailing-whitespace)
+
+    (global-set-key (kbd "C-x C-d") #'ido-dired)
+
+    (global-set-key (kbd "C-c C-e") #'eval-buffer)
+
+    (global-set-key (kbd "C-M-y") #'browse-kill-ring)
+
+    (define-key 'help-command "A" #'apropos) ;; (C-h a)
+
+    (eval-after-load #'comint-mode-hook
+      '(progn
+         (define-key comint-mode-map (kbd "C-c C-t") 'comint-truncate-buffer)))
+
+    ;; remap C-a to `smarter-move-beginning-of-line'
+    (global-set-key [remap move-beginning-of-line]
+                    'smarter-move-beginning-of-line)
+
+    (eval-after-load 'js
+      '(progn
+         (define-key js-mode-map (kbd "C-x ;")
+           (lambda ()
+             (interactive)
+             (insert "console.log();")
+             (backward-char 2)))))
+
+    (defun revert-this-buffer ()
+      (interactive)
+      (revert-buffer nil t t)
+      (message (concat "Reverted buffer " (buffer-name))))
+
+    (defun ido-recentf-open ()
+      "Use `ido-completing-read' to \\[find-file] a recent file"
+      (interactive)
+      (if (find-file (ido-completing-read "Find recent file: " recentf-list))
+          (message "Opening file...")
+        (message "Aborting")))
+  #+END_SRC
+* Projects
+  #+name: projects
+  #+BEGIN_SRC emacs-lisp
+    ;; TODO use shell-command and capture the currently-running process somehow.
+    ;; * manage list of running processes, enable restarting/shutting down of them
+
+    ;;; CycleDash
+
+    (defun cycledash:start-server ()
+      "Start the CycleDash server."
+      (interactive)
+      (async-shell-command "cd ~/workspace/cycledash/ && source venv/bin/activate && ./run.sh"
+                           "*CycleDash:./run.sh*"))
+
+    (defun cycledash:start-worker ()
+      "Start a CycleDash worker named WORK."
+      (interactive)
+      (async-shell-command "cd ~/workspace/cycledash/ && source venv/bin/activate && ./worker.sh WORK"
+                           "*CycleDash:./worker.sh*"))
+
+    (defun cycledash:start-gulp ()
+      "Start the gulp dev js builder."
+      (interactive)
+      (async-shell-command "cd ~/workspace/cycledash/ && gulp"
+                           "*CycleDash: gulp*"))
+
+    (defun cycledash:start ()
+      "Start all cycledash services"
+      (interactive)
+      (dolist (start '(cycledash:start-server cycledash:start-worker cycledash:start-gulp))
+        (funcall start)))
+
+
+
+    ;;; VCF.js
+
+    (defun vcf-js:test ()
+      "Run the vcf test suite"
+      (interactive)
+      (async-shell-command "cd ~/workspace/vcf.js/ && mocha test/test.js"
+                           "*vcf.js: tests*"))
+
+    (defun vcf-js:server ()
+      "Run the vcf test server"
+      (interactive)
+      (async-shell-command "cd ~/workspace/vcf.js/ && http-server"
+                           "*vcf.js: server*"))
+
+    ;;; VCF.js
+
+    (defun idiogrammatik:server ()
+      "Run the idiogrammatik server"
+      (interactive)
+      (async-shell-command "cd ~/workspace/idiogrammatik/ && http-server -p 8989"
+                           "*idiogrammatik: server*"))
+  #+END_SRC
+* Configuration file layout
+
+  Here I define the emacs.el file that gets generated by the code in
+  this org file.
+
+  #+BEGIN_SRC emacs-lisp :tangle yes :noweb no-export :exports code
+    ;;;; Generated from `emacs.org` in this directory.
+
+    <<init>>
+    <<packages>>
+    <<modes>>
+    <<org-mode>>
+    <<functions>>
+    <<defaults>>
+    <<bindings>>
+    <<projects>>
+
+
+
+  #+END_SRC
