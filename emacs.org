@@ -1,4 +1,4 @@
-#+TITLE: Emacs Configuration
+#+TITLE: Literate Configuration
 
 * Prelude
 
@@ -42,16 +42,21 @@
   #+name: packages
   #+BEGIN_SRC emacs-lisp
     (require 'package)
-
-    (add-to-list 'package-archives
-      '("marmalade" . "http://marmalade-repo.org/packages/") t)
-    (add-to-list 'package-archives
-      '("melpa" . "http://melpa.milkbox.net/packages/") t)
-    (add-to-list 'package-archives
-      '("melpa-stable" . "http://melpa-stable.milkbox.net/packages/") t)
-
     (package-initialize)
 
+    (defvar ihodes/package-archives
+      '(("marmalade" . "http://marmalade-repo.org/packages/")
+        ("melpa" . "http://melpa.milkbox.net/packages/")
+        ("melpa-stable" . "http://melpa-stable.milkbox.net/packages/")))
+
+    (dolist (archive ihodes/package-archives)
+      (add-to-list 'package-archives archive t))
+  #+END_SRC
+
+  List the packages I like to keep installed.
+
+  #+name: packages
+  #+BEGIN_SRC emacs-lisp
     (defvar ihodes/packages
       '(haskell-mode         ;; haskell major mode
         tuareg               ;; ocaml major more
@@ -86,28 +91,33 @@
   maintainer has stopped maintaining the original, [[https://github.com/tkf/emacs-ipython-notebook/issues/137][yet iPython development
   marches on]].
 
+  (I have cloned the git repo manually, and keep it in ~./ein-lisp~.)
+
   #+name: packages
   #+BEGIN_SRC emacs-lisp
     (add-to-list 'load-path "~/.emacs.d/ein-lisp")
     (add-hook 'python-mode-hook '(require 'ein))
   #+END_SRC
 
-  Finally, if ~(ihodes/install-packages)~ is uncommented, we installed all
-  required packages.
+  Finally, if ~(ihodes/install-packages …)~ is uncommented, we install all
+  packages listed above.
 
   #+name: packages
   #+BEGIN_SRC emacs-lisp
-    (defun ihodes/install-packages ()
+    (defun ihodes/install-packages (package-list)
       "Install all listed packages."
       (progn
         (package-refresh-contents)
-        (dolist (p ihodes/packages)
+        (dolist (p package-list)
           (when (not (package-installed-p p))
             (package-install p)))))
 
-    ;; (ihodes/install-packages)
+    ;; (ihodes/install-packages ihodes/packages)
   #+END_SRC
 * Defaults
+  Here we set some defaults which generally make emacs a more well-behaved
+  editor.
+
   #+name: defaults
   #+BEGIN_SRC emacs-lisp
     (global-undo-tree-mode)
@@ -117,20 +127,19 @@
     (setq kill-ring-max 500)
     (setq js-indent-level 2)
     (setq tramp-default-method "ssh")
+
     (require 'uniquify)
     (setq-default uniquify-buffer-name-style 'forward)
 
     (require 'saveplace)
     (setq-default save-place t)
 
-    ;; Show trailing whitespace.
     (setq-default show-trailing-whitespace t)
 
     (setq-default auto-save-file-name-transforms
           `((".*" ,temporary-file-directory t)))
 
     (setq auto-save-default nil)
-
 
     (setq-default fill-column 80)
     (setq-default indent-tabs-mode nil)
@@ -143,6 +152,9 @@
     (when window-system (set-exec-path-from-shell-PATH))
   #+END_SRC
 * Modes
+  Here we activate modes and do a lot of stuff which should be split out into
+  smaller code blocks.
+
   #+name: modes
   #+BEGIN_SRC emacs-lisp
     (require 'flycheck)
@@ -296,8 +308,13 @@
     (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
     (yas-global-mode 1)
   #+END_SRC
-
 ** Org
+
+Very rudimentary customization of ~org-mode~.
+
+Primarily we set our [[http://mobileorg.ncogni.to/][MobileOrg]] directory so that we can sync with the iPhone (or
+Android!) app. We also enable support for a variety of languages.
+
 #+name: modes
 #+BEGIN_SRC emacs-lisp
   (setq org-directory "~/org/")
@@ -307,12 +324,11 @@
    (quote org-babel-load-languages)
    (quote ((emacs-lisp . t)
            (dot . t)
-           (ditaa . t)
+           (clojure . t)
+           (js . t)
            (R . t)
            (python . t)
            (ruby . t)
-           (gnuplot . t)
-           (clojure . t)
            (sh . t)
            (ledger . t)
            (org . t)
@@ -357,19 +373,32 @@ Some simple EIN customizations.
       (ein:notebooklist-open))
   #+END_SRC
 ** Clojure settings
+
+Clojure-mode is useful for ~.edn~, ~.cljs~, and ~.cljx~ files as well.
+
   #+name: modes
   #+BEGIN_SRC emacs-lisp
-    (require 'clojure-mode)
     (nconc auto-mode-alist '(("\\.edn\\'" . clojure-mode)
                              ("\\.cljs\\'" . clojure-mode)
                              ("\\.cljx\\'" . clojure-mode)))
+  #+END_SRC
+
+We make the [[https://github.com/clojure-emacs/cider][Cider]] (Clojure IDE) experience a bit better.
+
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (require 'clojure-mode)
     (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
     (add-hook 'cider-repl-mode-hook 'paredit-mode)
     (setq nrepl-hide-special-buffers t)
     (setq cider-auto-select-error-buffer t)
+  #+END_SRC
 
-    ;; Custom Clojure indents
-    (require 'clojure-mode)
+Some common Clojure functions look better with different indentation, so we set
+those here.
+
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
     (define-clojure-indent
       (defroutes 'defun)
       (GET 2)
@@ -378,26 +407,16 @@ Some simple EIN customizations.
       (DELETE 2)
       (HEAD 2)
       (ANY 2)
-      (context 2))
-
-    (define-clojure-indent
-      (form-to 1))
-
-    (define-clojure-indent
+      (context 2)
+      (form-to 1)
       (match 1)
-      (are 2))
-
-    (define-clojure-indent
+      (are 2)
       (select 1)
       (insert 1)
       (update 1)
-      (delete 1))
-
-    (define-clojure-indent
+      (delete 1)
       (run* 1)
-      (fresh 1))
-
-    (define-clojure-indent
+      (fresh 1)
       (extend-freeze 2)
       (extend-thaw 1))
   #+END_SRC
@@ -612,6 +631,10 @@ Some simple EIN customizations.
         (message "Aborting")))
   #+END_SRC
 * Projects
+
+This is a simple & hacky way to start asynchronous processes associated with
+projects I frequently work on.
+
 ** TODO Manage a list of processes per project, and commands for restarting them etc. Upstart?
 ** CycleDash
   Found on [[https://github.com/hammerlab/cycledash][GitHub]].
@@ -669,8 +692,10 @@ Some simple EIN customizations.
   #+END_SRC
 * Configuration file layout
 
-  Here I define the emacs.el file that gets generated by the code in
-  this org file.
+  Here I define the ~emacs.el~ file generated by the code in this org file.
+
+  The below block describes how the code above should be organized within the
+  generated ~emacs.el~.
 
   #+BEGIN_SRC emacs-lisp :tangle yes :noweb no-export :exports code
     ;;;; This file generated from `emacs.org` in this directory.
