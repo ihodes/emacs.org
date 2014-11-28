@@ -1,23 +1,44 @@
 #+TITLE: Emacs Configuration
 
-* Init
-  In slow transition to a literate emacs configuration. This is basically a
-  straight port of my existing config to ~org-mode~.
+* Prelude
 
-  #+name: init
+  This is the beginning of a "literate" emacs configuration. This is both a way
+  to learn more about ~org-mode~ and to better organize my configuration.
+
+  So far I am very impressed with how it feels to write code like this. Logical
+  and explicitly-named code-folding, with first class comments and
+  hyperlinks, seems disproportionately useful and powerful.
+
+* Look & Feel
+
+  First things first, let's make emacs pretty.
+
+  #+name: look-and-feel
   #+BEGIN_SRC emacs-lisp
-    (add-to-list 'load-path "~/.emacs.d/lisp")
-    (add-to-list 'load-path "~/.emacs.d/lisp/settings")
-
-    ;; Need to to this for our custom forked EIN.
-    (add-to-list 'load-path "~/.emacs.d/lisp/ein-lisp")
-    (add-hook 'python-mode-hook
-              '(progn
-                 (require 'ein)))
-
     (load-theme 'tango-dark)
+
+    (blink-cursor-mode 0)
+    (setq initial-scratch-message "")
+    (setq inhibit-startup-message t)
+    (setq inhibit-startup-echo-area-message "isaachodes")
+    (menu-bar-mode -1)
+    (tool-bar-mode -1)
+    (scroll-bar-mode -1)
+
+    (show-paren-mode 1)
+    (set-face-attribute 'mode-line nil
+                        :foreground "gray100" :background "gray10"
+                        :inverse-video nil
+                        :box '(:line-width 6 :color "gray20" :style nil))
+    (set-face-attribute 'mode-line-inactive nil
+                        :foreground "gray30" :background "gray10"
+                        :inverse-video nil
+                        :box '(:line-width 6 :color "gray10" :style nil))
   #+END_SRC
 * Packages
+
+  Configure and load ~package.el~, initializing the packages it manages.
+
   #+name: packages
   #+BEGIN_SRC emacs-lisp
     (require 'package)
@@ -29,10 +50,8 @@
     (add-to-list 'package-archives
       '("melpa-stable" . "http://melpa-stable.milkbox.net/packages/") t)
 
-    ;; Loads the packages installed via the manager.
     (package-initialize)
 
-    ;; Install standard packages if not already installed
     (defvar ihodes/packages
       '(haskell-mode         ;; haskell major mode
         tuareg               ;; ocaml major more
@@ -56,12 +75,28 @@
         coffee-mode haml-mode yaml-mode
         skewer-mode          ;; inject JS into a browser
         inf-ruby
+        visual-regexp        ;; preview regexes live
         web-mode             ;; easy multi-mode for the web
-        scala-mode2 ensime
+        scala-mode2 ensime   ;; scala and scala IDE modes
         yasnippet)
       "Packages which should always be installed.")
+  #+END_SRC
 
-    ;; Defer this, because this can kill the emacs.
+  This loads a [[https://github.com/millejoh/emacs-ipython-notebook][fork]] of [[https://github.com/tkf/emacs-ipython-notebook][emacs-ipython-notebook]] (EIN), required because the
+  maintainer has stopped maintaining the original, [[https://github.com/tkf/emacs-ipython-notebook/issues/137][yet iPython development
+  marches on]].
+
+  #+name: packages
+  #+BEGIN_SRC emacs-lisp
+    (add-to-list 'load-path "~/.emacs.d/ein-lisp")
+    (add-hook 'python-mode-hook '(require 'ein))
+  #+END_SRC
+
+  Finally, if ~(ihodes/install-packages)~ is uncommented, we installed all
+  required packages.
+
+  #+name: packages
+  #+BEGIN_SRC emacs-lisp
     (defun ihodes/install-packages ()
       "Install all listed packages."
       (progn
@@ -71,6 +106,41 @@
             (package-install p)))))
 
     ;; (ihodes/install-packages)
+  #+END_SRC
+* Defaults
+  #+name: defaults
+  #+BEGIN_SRC emacs-lisp
+    (global-undo-tree-mode)
+    (column-number-mode t)
+    (ido-mode t)
+    (setq ido-enable-flex-matching t)
+    (setq kill-ring-max 500)
+    (setq js-indent-level 2)
+    (setq tramp-default-method "ssh")
+    (require 'uniquify)
+    (setq-default uniquify-buffer-name-style 'forward)
+
+    (require 'saveplace)
+    (setq-default save-place t)
+
+    ;; Show trailing whitespace.
+    (setq-default show-trailing-whitespace t)
+
+    (setq-default auto-save-file-name-transforms
+          `((".*" ,temporary-file-directory t)))
+
+    (setq auto-save-default nil)
+
+
+    (setq-default fill-column 80)
+    (setq-default indent-tabs-mode nil)
+    (setq-default enable-recursive-minibuffers t)
+    (setq-default apropos-do-all t
+                  save-place-file (concat user-emacs-directory "places")
+                  backup-directory-alist `(("." . ,(concat user-emacs-directory
+                                                   "backups"))))
+
+    (when window-system (set-exec-path-from-shell-PATH))
   #+END_SRC
 * Modes
   #+name: modes
@@ -227,8 +297,8 @@
     (yas-global-mode 1)
   #+END_SRC
 
-* Org
-#+name: org-mode
+** Org
+#+name: modes
 #+BEGIN_SRC emacs-lisp
   (setq org-directory "~/org/")
   (setq org-mobile-directory "~/Dropbox/Apps/MobileOrg")
@@ -248,7 +318,161 @@
            (org . t)
            (latex . t))))
 #+END_SRC
-* Functions
+
+We need to unbind ~S-<left|right|up|down>~ because ~org-mode~ steals these from
+~windmove~, which is not cool.
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+  (dolist (dir '("left" "right" "up" "down"))
+    (define-key org-mode-map (kbd (format "S-<%s>" dir)) nil))
+#+END_SRC
+** Python settings
+
+This lets us use the iPython kernel as the inferior Python process.
+
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (setq python-shell-interpreter "ipython"
+          python-shell-prompt-regexp "In \\[[0-9]+\\]: "
+          python-shell-prompt-output-regexp "Out \\[[0-9]+\\]: "
+          python-shell-completion-setup-code
+          "from IPython.core.completerlib import module_completion"
+          python-shell-completion-module-string-code
+          "';'.join(module_completion('''%s'''))\n"
+          python-shell-completion-string-code
+          "';'.join(get_ipython().Completer.all_completions('''%s'''))\n")
+  #+END_SRC
+
+Some simple EIN customizations.
+
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (setq ein:use-auto-complete 1)
+    (setq ein:console-args '("--gui=osx" "--matplotlib=osx" "--colors=Linux"))
+
+    (defun ein:load-notebooks ()
+      (interactive)
+      (ein:notebooklist-load)
+      (ein:notebooklist-open))
+  #+END_SRC
+** Clojure settings
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (require 'clojure-mode)
+    (nconc auto-mode-alist '(("\\.edn\\'" . clojure-mode)
+                             ("\\.cljs\\'" . clojure-mode)
+                             ("\\.cljx\\'" . clojure-mode)))
+    (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
+    (add-hook 'cider-repl-mode-hook 'paredit-mode)
+    (setq nrepl-hide-special-buffers t)
+    (setq cider-auto-select-error-buffer t)
+
+    ;; Custom Clojure indents
+    (require 'clojure-mode)
+    (define-clojure-indent
+      (defroutes 'defun)
+      (GET 2)
+      (POST 2)
+      (PUT 2)
+      (DELETE 2)
+      (HEAD 2)
+      (ANY 2)
+      (context 2))
+
+    (define-clojure-indent
+      (form-to 1))
+
+    (define-clojure-indent
+      (match 1)
+      (are 2))
+
+    (define-clojure-indent
+      (select 1)
+      (insert 1)
+      (update 1)
+      (delete 1))
+
+    (define-clojure-indent
+      (run* 1)
+      (fresh 1))
+
+    (define-clojure-indent
+      (extend-freeze 2)
+      (extend-thaw 1))
+  #+END_SRC
+* Gittit
+  ~gittit~ is a little library I wrote to connect local files to GitHub repos.
+
+  These are our utility functions.
+
+  #+name: gittit
+  #+BEGIN_SRC emacs-lisp
+    (defun gittit:base-github-url ()
+      (let* ((git-url (shell-command-to-string "git config --get remote.origin.url"))
+             (http-url (replace-regexp-in-string "git@" "" git-url))
+             (http-url (replace-regexp-in-string "\.git" "" http-url))
+             (http-url (replace-regexp-in-string ":" "/" http-url))
+             (http-url (replace-regexp-in-string "\n" "" http-url)))
+        http-url))
+
+    (defun gittit:current-branch-name ()
+      (replace-regexp-in-string "\n" "" (shell-command-to-string "git rev-parse --abbrev-ref HEAD")))
+
+    (defun gittit:parent-directory (dir)
+      (unless (equal "/" dir)
+        (file-name-directory (directory-file-name dir))))
+
+    (defun gittit:base-git-directory (filename)
+      (let ((base-dir (file-name-directory filename)))
+        (if (file-exists-p (concat base-dir ".git"))
+          base-dir
+          (gittit:base-git-directory (gittit:parent-directory base-dir)))))
+
+    (defun gittit:github-url-for-file (filename)
+      (format "http://%s/blob/%s/%s"
+              (gittit:base-github-url)
+              (gittit:current-branch-name)
+              (replace-regexp-in-string (gittit:base-git-directory filename) "" filename)))
+
+    (defun gittit:github-url-for-line (filename start &optional end)
+      (format (concat (gittit:github-url-for-file filename) (if end "#L%s-L%s" "#L%s"))
+              start
+              end))
+  #+END_SRC
+
+  These are the public exports:
+
+  #+name: gittit
+  #+BEGIN_SRC emacs-lisp
+    (defun github-url-for-line  (filename start &optional end)
+      "Returns, echoes, and kills the GitHub URL for FILENAME between START and optionally END."
+      (interactive (cons (buffer-file-name)
+                         (if (use-region-p)
+                            (list (region-beginning) (region-end))
+                            (list (point)))))
+      (let* ((url (gittit:github-url-for-file filename))
+             (start-line (1+ (count-lines 1 start)))
+             (url (if end
+                      (format "%s#L%s-L%s" url start-line (count-lines 1 end))
+                      (format "%s#L%s" url start-line))))
+        (kill-new url)
+        (message url)
+        url))
+
+    (defun browse-github-url-for-line (filename start &optional end)
+      "Navigate to the GitHub URL for FILENAME between START and optionally END."
+      (interactive (cons (buffer-file-name)
+                         (if (use-region-p)
+                            (list (region-beginning) (region-end))
+                            (list (point)))))
+      (browse-url (if end (github-url-for-line filename start end)
+                    (github-url-for-line filename start))))
+  #+END_SRC
+
+  Under the [[http://www.apache.org/licenses/LICENSE-2.0.html][Apache 2.0 License]].
+* Misc. Functions
+  A bunch of little utility functions created here and elsewhere.
   #+name: functions
   #+BEGIN_SRC emacs-lisp
     (defun clear-shell-buffer ()
@@ -309,221 +533,8 @@
         (when (= orig-point (point))
           (move-beginning-of-line 1))))
   #+END_SRC
-* Defaults
-  #+name: defaults
-  #+BEGIN_SRC emacs-lisp
-    (progn 
-           (global-undo-tree-mode)
-           (column-number-mode t)
-           (ido-mode t)
-           (setq ido-enable-flex-matching t)
-           (setq kill-ring-max 500)
-           (setq js-indent-level 2)
-           (setq tramp-default-method "ssh")
-           (blink-cursor-mode 0)
-           (setq initial-scratch-message "")
-           (setq inhibit-startup-message t)
-           (setq inhibit-startup-echo-area-message "isaachodes")
-
-           ;; in emacs 24.4 (toggle-frame-fullscreen)
-           (menu-bar-mode -1)
-           (when (fboundp 'tool-bar-mode)
-             (tool-bar-mode -1))
-           (when (fboundp 'scroll-bar-mode)
-             (scroll-bar-mode -1))
-
-           (require 'uniquify)
-           (setq-default uniquify-buffer-name-style 'forward)
-
-           (require 'saveplace)
-           (setq-default save-place t)
-
-           ;; Show trailing whitespace.
-           (setq-default show-trailing-whitespace t)
-           ;; ...and delete them on save.
-           ;; (add-hook 'before-save-hook 'delete-trailing-whitespace)
-
-           (setq-default auto-save-file-name-transforms
-                 `((".*" ,temporary-file-directory t)))
-
-           (setq auto-save-default nil)
-
-           (show-paren-mode 1)
-           (setq-default fill-column 80)
-           (setq-default indent-tabs-mode nil)
-           (setq-default enable-recursive-minibuffers t)
-           (setq-default apropos-do-all t
-                         save-place-file (concat user-emacs-directory "places")
-                         backup-directory-alist `(("." . ,(concat user-emacs-directory
-                                                          "backups"))))
-
-           (when window-system (set-exec-path-from-shell-PATH))
-
-           (set-face-attribute 'mode-line nil
-                               :foreground "gray100" :background "gray10"
-                               :inverse-video nil
-                               :box '(:line-width 6 :color "gray20" :style nil))
-           (set-face-attribute 'mode-line-inactive nil
-                               :foreground "gray30" :background "gray10"
-                               :inverse-video nil
-                               :box '(:line-width 6 :color "gray10" :style nil)))
-  #+END_SRC
-* Gittit
-  #+name: gittit
-  #+BEGIN_SRC emacs-lisp
-    (defun gittit:base-github-url ()
-      (let* ((git-url (shell-command-to-string "git config --get remote.origin.url"))
-             (http-url (replace-regexp-in-string "git@" "" git-url))
-             (http-url (replace-regexp-in-string "\.git" "" http-url))
-             (http-url (replace-regexp-in-string ":" "/" http-url))
-             (http-url (replace-regexp-in-string "\n" "" http-url)))
-        http-url))
-
-    (defun gittit:current-branch-name ()
-      (replace-regexp-in-string "\n" "" (shell-command-to-string "git rev-parse --abbrev-ref HEAD")))
-
-    (defun gittit:parent-directory (dir)
-      (unless (equal "/" dir)
-        (file-name-directory (directory-file-name dir))))
-
-    (defun gittit:base-git-directory (filename)
-      (let ((base-dir (file-name-directory filename)))
-        (if (file-exists-p (concat base-dir ".git"))
-          base-dir
-          (gittit:base-git-directory (gittit:parent-directory base-dir)))))
-
-    (defun gittit:github-url-for-file (filename)
-      (format "http://%s/blob/%s/%s"
-              (gittit:base-github-url)
-              (gittit:current-branch-name)
-              (replace-regexp-in-string (gittit:base-git-directory filename) "" filename)))
-
-    (defun gittit:github-url-for-line (filename start &optional end)
-      (format (concat (gittit:github-url-for-file filename) (if end "#L%s-L%s" "#L%s"))
-              start
-              end))
-
-
-    ;;; "Public" API
-
-    (defun github-url-for-line  (filename start &optional end)
-      "Returns, echoes, and kills the GitHub URL for FILENAME between START and optionally END."
-      (interactive (cons (buffer-file-name)
-                         (if (use-region-p)
-                            (list (region-beginning) (region-end))
-                            (list (point)))))
-      (let* ((url (gittit:github-url-for-file filename))
-             (start-line (1+ (count-lines 1 start)))
-             (url (if end
-                      (format "%s#L%s-L%s" url start-line (count-lines 1 end))
-                      (format "%s#L%s" url start-line))))
-        (kill-new url)
-        (message url)
-        url))
-
-    (defun browse-github-url-for-line (filename start &optional end)
-      "Navigate to the GitHub URL for FILENAME between START and optionally END."
-      (interactive (cons (buffer-file-name)
-                         (if (use-region-p)
-                            (list (region-beginning) (region-end))
-                            (list (point)))))
-      (browse-url (if end (github-url-for-line filename start end)
-                    (github-url-for-line filename start))))
-
-  #+END_SRC
-* Python settings
-  #+name: python-settings
-  #+BEGIN_SRC emacs-lisp
-    ;;; python-settings --- custom settings for python modes
-    ;;; Commentary:
-
-    ;;; Code:
-    (setq
-     python-shell-interpreter "ipython"
-     python-shell-prompt-regexp "In \\[[0-9]+\\]: "
-     python-shell-prompt-output-regexp "Out \\[[0-9]+\\]: "
-     python-shell-completion-setup-code
-       "from IPython.core.completerlib import module_completion"
-     python-shell-completion-module-string-code
-       "';'.join(module_completion('''%s'''))\n"
-     python-shell-completion-string-code
-       "';'.join(get_ipython().Completer.all_completions('''%s'''))\n")
-
-    ;;;;;;;;;;;;; JEDI
-    ;; (require 'jedi)
-    ;; ;; NOTE: When first running, M-x jedi:install-server
-    ;; (defun jedi-config:setup-keys ()
-    ;;   (local-set-key (kbd "M-.") 'jedi:goto-definition)
-    ;;   (local-set-key (kbd "M-,") 'jedi:goto-definition-pop-marker)
-    ;;   (local-set-key (kbd "M-?") 'jedi:show-doc)
-    ;;   (local-set-key (kbd "M-/") 'jedi:get-in-function-call))
-
-    ;; (add-to-list 'ac-sources 'ac-source-jedi-direct)
-    ;; (add-hook 'python-mode-hook 'jedi:setup)
-    ;; (setq jedi:get-in-function-call-delay 10000000)
-    ;; (setq jedi:complete-on-dot t)
-    ;; (add-hook 'python-mode-hook 'jedi-config:setup-keys)
-    ;;;;;;;;;;; END JEDI
-
-
-    ;;;;;;;;;;; EIN
-    (setq ein:use-auto-complete 1)
-    (setq ein:console-args '("--gui=osx" "--matplotlib=osx" "--colors=Linux"))
-
-    ;; Easily connect to notebook list
-    (defun ein:load-notebooks ()
-      (interactive)
-      (ein:notebooklist-load)
-      (ein:notebooklist-open))
-    ;;;;;;;;;;;; END EIN
-  #+END_SRC
-* Clojure settings
-  #+name: clojure-settings
-  #+BEGIN_SRC emacs-lisp
-    (require 'clojure-mode)
-    (nconc auto-mode-alist '(("\\.edn\\'" . clojure-mode)
-                             ("\\.cljs\\'" . clojure-mode)
-                             ("\\.cljx\\'" . clojure-mode)))
-    (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
-    (add-hook 'cider-repl-mode-hook 'paredit-mode)
-    (setq nrepl-hide-special-buffers t)
-    (setq cider-auto-select-error-buffer t)
-
-    ;; Custom Clojure indents
-    (require 'clojure-mode)
-    (define-clojure-indent
-      (defroutes 'defun)
-      (GET 2)
-      (POST 2)
-      (PUT 2)
-      (DELETE 2)
-      (HEAD 2)
-      (ANY 2)
-      (context 2))
-
-    (define-clojure-indent
-      (form-to 1))
-
-    (define-clojure-indent
-      (match 1)
-      (are 2))
-
-    (define-clojure-indent
-      (select 1)
-      (insert 1)
-      (update 1)
-      (delete 1))
-
-    (define-clojure-indent
-      (run* 1)
-      (fresh 1))
-
-    (define-clojure-indent
-      (extend-freeze 2)
-      (extend-thaw 1))
-
-  #+END_SRC
 * Bindings
+  Global and some mode-specific bindings that may need to be cleaned up.
   #+name: bindings
   #+BEGIN_SRC emacs-lisp
     (global-set-key (kbd "C-x C-b") 'ibuffer)
@@ -601,13 +612,11 @@
         (message "Aborting")))
   #+END_SRC
 * Projects
+** TODO Manage a list of processes per project, and commands for restarting them etc. Upstart?
+** CycleDash
+  Found on [[https://github.com/hammerlab/cycledash][GitHub]].
   #+name: projects
   #+BEGIN_SRC emacs-lisp
-    ;; TODO use shell-command and capture the currently-running process somehow.
-    ;; * manage list of running processes, enable restarting/shutting down of them
-
-    ;;; CycleDash
-
     (defun cycledash:start-server ()
       "Start the CycleDash server."
       (interactive)
@@ -631,11 +640,11 @@
       (interactive)
       (dolist (start '(cycledash:start-server cycledash:start-worker cycledash:start-gulp))
         (funcall start)))
-
-
-
-    ;;; VCF.js
-
+  #+END_SRC
+** VCF.js
+  Found on [[https://github.com/ihodes/vcf.js][GitHub]].
+  #+name: projects
+  #+BEGIN_SRC emacs-lisp
     (defun vcf-js:test ()
       "Run the vcf test suite"
       (interactive)
@@ -647,9 +656,11 @@
       (interactive)
       (async-shell-command "cd ~/workspace/vcf.js/ && http-server"
                            "*vcf.js: server*"))
-
-    ;;; VCF.js
-
+  #+END_SRC
+** Idiogrammatik.js
+   Found on [[https://github.com/hammerlab/idiogrammatik][GitHub]].
+  #+name: projects
+  #+BEGIN_SRC emacs-lisp
     (defun idiogrammatik:server ()
       "Run the idiogrammatik server"
       (interactive)
@@ -662,17 +673,15 @@
   this org file.
 
   #+BEGIN_SRC emacs-lisp :tangle yes :noweb no-export :exports code
-    ;;;; Generated from `emacs.org` in this directory.
+    ;;;; This file generated from `emacs.org` in this directory.
 
     <<init>>
+    <<look-and-feel>>
     <<packages>>
     <<modes>>
-    <<org-mode>>
-    <<functions>>
     <<defaults>>
+    <<functions>>
     <<gittit>>
-    <<python-settings>>
-    <<clojure-settings>>
     <<bindings>>
     <<projects>>
   #+END_SRC

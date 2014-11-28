@@ -1,0 +1,10 @@
+*~
+.org-id-locations
+abbrev_defs
+elpa/
+places
+projectile-bookmarks.eld
+.yas-compiled-snippets.el
+emacs.el
+ein-lisp/
+.#*
