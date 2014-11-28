@@ -1,9 +1,5 @@
 #+TITLE: Emacs Configuration
 
-* TODO incl. gittit
-* TODO incl. python-settings
-* TODO incl. clojure-settings
-
 * Init
   In slow transition to a literate emacs configuration. This is basically a
   straight port of my existing config to ~org-mode~.
@@ -114,7 +110,6 @@
     (add-to-list 'sml/hidden-modes " yas")
 
     ;; js hooks
-    (require 'flycheck)
     (add-hook 'js-mode-hook 'flycheck-mode)
     (flycheck-define-checker jsxhint-checker
       "A JSX syntax and style checker based on JSXHint."
@@ -231,6 +226,7 @@
     (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
     (yas-global-mode 1)
   #+END_SRC
+
 * Org
 #+name: org-mode
 #+BEGIN_SRC emacs-lisp
@@ -371,6 +367,161 @@
                                :foreground "gray30" :background "gray10"
                                :inverse-video nil
                                :box '(:line-width 6 :color "gray10" :style nil)))
+  #+END_SRC
+* Gittit
+  #+name: gittit
+  #+BEGIN_SRC emacs-lisp
+    (defun gittit:base-github-url ()
+      (let* ((git-url (shell-command-to-string "git config --get remote.origin.url"))
+             (http-url (replace-regexp-in-string "git@" "" git-url))
+             (http-url (replace-regexp-in-string "\.git" "" http-url))
+             (http-url (replace-regexp-in-string ":" "/" http-url))
+             (http-url (replace-regexp-in-string "\n" "" http-url)))
+        http-url))
+
+    (defun gittit:current-branch-name ()
+      (replace-regexp-in-string "\n" "" (shell-command-to-string "git rev-parse --abbrev-ref HEAD")))
+
+    (defun gittit:parent-directory (dir)
+      (unless (equal "/" dir)
+        (file-name-directory (directory-file-name dir))))
+
+    (defun gittit:base-git-directory (filename)
+      (let ((base-dir (file-name-directory filename)))
+        (if (file-exists-p (concat base-dir ".git"))
+          base-dir
+          (gittit:base-git-directory (gittit:parent-directory base-dir)))))
+
+    (defun gittit:github-url-for-file (filename)
+      (format "http://%s/blob/%s/%s"
+              (gittit:base-github-url)
+              (gittit:current-branch-name)
+              (replace-regexp-in-string (gittit:base-git-directory filename) "" filename)))
+
+    (defun gittit:github-url-for-line (filename start &optional end)
+      (format (concat (gittit:github-url-for-file filename) (if end "#L%s-L%s" "#L%s"))
+              start
+              end))
+
+
+    ;;; "Public" API
+
+    (defun github-url-for-line  (filename start &optional end)
+      "Returns, echoes, and kills the GitHub URL for FILENAME between START and optionally END."
+      (interactive (cons (buffer-file-name)
+                         (if (use-region-p)
+                            (list (region-beginning) (region-end))
+                            (list (point)))))
+      (let* ((url (gittit:github-url-for-file filename))
+             (start-line (1+ (count-lines 1 start)))
+             (url (if end
+                      (format "%s#L%s-L%s" url start-line (count-lines 1 end))
+                      (format "%s#L%s" url start-line))))
+        (kill-new url)
+        (message url)
+        url))
+
+    (defun browse-github-url-for-line (filename start &optional end)
+      "Navigate to the GitHub URL for FILENAME between START and optionally END."
+      (interactive (cons (buffer-file-name)
+                         (if (use-region-p)
+                            (list (region-beginning) (region-end))
+                            (list (point)))))
+      (browse-url (if end (github-url-for-line filename start end)
+                    (github-url-for-line filename start))))
+
+  #+END_SRC
+* Python settings
+  #+name: python-settings
+  #+BEGIN_SRC emacs-lisp
+    ;;; python-settings --- custom settings for python modes
+    ;;; Commentary:
+
+    ;;; Code:
+    (setq
+     python-shell-interpreter "ipython"
+     python-shell-prompt-regexp "In \\[[0-9]+\\]: "
+     python-shell-prompt-output-regexp "Out \\[[0-9]+\\]: "
+     python-shell-completion-setup-code
+       "from IPython.core.completerlib import module_completion"
+     python-shell-completion-module-string-code
+       "';'.join(module_completion('''%s'''))\n"
+     python-shell-completion-string-code
+       "';'.join(get_ipython().Completer.all_completions('''%s'''))\n")
+
+    ;;;;;;;;;;;;; JEDI
+    ;; (require 'jedi)
+    ;; ;; NOTE: When first running, M-x jedi:install-server
+    ;; (defun jedi-config:setup-keys ()
+    ;;   (local-set-key (kbd "M-.") 'jedi:goto-definition)
+    ;;   (local-set-key (kbd "M-,") 'jedi:goto-definition-pop-marker)
+    ;;   (local-set-key (kbd "M-?") 'jedi:show-doc)
+    ;;   (local-set-key (kbd "M-/") 'jedi:get-in-function-call))
+
+    ;; (add-to-list 'ac-sources 'ac-source-jedi-direct)
+    ;; (add-hook 'python-mode-hook 'jedi:setup)
+    ;; (setq jedi:get-in-function-call-delay 10000000)
+    ;; (setq jedi:complete-on-dot t)
+    ;; (add-hook 'python-mode-hook 'jedi-config:setup-keys)
+    ;;;;;;;;;;; END JEDI
+
+
+    ;;;;;;;;;;; EIN
+    (setq ein:use-auto-complete 1)
+    (setq ein:console-args '("--gui=osx" "--matplotlib=osx" "--colors=Linux"))
+
+    ;; Easily connect to notebook list
+    (defun ein:load-notebooks ()
+      (interactive)
+      (ein:notebooklist-load)
+      (ein:notebooklist-open))
+    ;;;;;;;;;;;; END EIN
+  #+END_SRC
+* Clojure settings
+  #+name: clojure-settings
+  #+BEGIN_SRC emacs-lisp
+    (require 'clojure-mode)
+    (nconc auto-mode-alist '(("\\.edn\\'" . clojure-mode)
+                             ("\\.cljs\\'" . clojure-mode)
+                             ("\\.cljx\\'" . clojure-mode)))
+    (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
+    (add-hook 'cider-repl-mode-hook 'paredit-mode)
+    (setq nrepl-hide-special-buffers t)
+    (setq cider-auto-select-error-buffer t)
+
+    ;; Custom Clojure indents
+    (require 'clojure-mode)
+    (define-clojure-indent
+      (defroutes 'defun)
+      (GET 2)
+      (POST 2)
+      (PUT 2)
+      (DELETE 2)
+      (HEAD 2)
+      (ANY 2)
+      (context 2))
+
+    (define-clojure-indent
+      (form-to 1))
+
+    (define-clojure-indent
+      (match 1)
+      (are 2))
+
+    (define-clojure-indent
+      (select 1)
+      (insert 1)
+      (update 1)
+      (delete 1))
+
+    (define-clojure-indent
+      (run* 1)
+      (fresh 1))
+
+    (define-clojure-indent
+      (extend-freeze 2)
+      (extend-thaw 1))
+
   #+END_SRC
 * Bindings
   #+name: bindings
@@ -519,9 +670,9 @@
     <<org-mode>>
     <<functions>>
     <<defaults>>
+    <<gittit>>
+    <<python-settings>>
+    <<clojure-settings>>
     <<bindings>>
     <<projects>>
-
-
-
   #+END_SRC
