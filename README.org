@@ -1,0 +1,8 @@
+* Literate Configuration
+
+I configure emacs using ~[[http://orgmode.org/][org-mode]]~, a plain-text format and emacs major
+mode.
+
+You can see the configuration in ~emacs.org~, which is compiled and loaded
+by ~init.el~.
+
