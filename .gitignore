@@ -8,3 +8,4 @@ projectile-bookmarks.eld
 emacs.el
 ein-lisp/
 .#*
+.cask

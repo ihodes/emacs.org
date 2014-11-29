@@ -37,84 +37,19 @@
   #+END_SRC
 * Packages
 
-  Configure and load ~package.el~, initializing the packages it manages.
+  Configure and load ~cask.el~, initializing the packages it manages [[file:Cask][Cask]].
 
   #+name: packages
   #+BEGIN_SRC emacs-lisp
-    (require 'package)
-    (package-initialize)
-
-    (defvar ihodes/package-archives
-      '(("marmalade" . "http://marmalade-repo.org/packages/")
-        ("melpa" . "http://melpa.milkbox.net/packages/")
-        ("melpa-stable" . "http://melpa-stable.milkbox.net/packages/")))
-
-    (dolist (archive ihodes/package-archives)
-      (add-to-list 'package-archives archive t))
+    (require 'cask "/usr/local/Cellar/cask/0.7.2/cask.el")
+    (cask-initialize)
   #+END_SRC
 
-  List the packages I like to keep installed.
+  ([[https://github.com/cask/cask][Cask]] can be installed with ~brew install cask~, and the packages managed by
+  the Cask file can be installed with ~cask install~.)
 
-  #+name: packages
-  #+BEGIN_SRC emacs-lisp
-    (defvar ihodes/packages
-      '(haskell-mode         ;; haskell major mode
-        tuareg               ;; ocaml major more
-        highlight-symbol     ;; allows us to highlight symbols
-        rainbow-delimiters   ;; parens have different colors
-        magit gist magit-gh-pulls ;; git & github modes
-        python               ;; python major mode
-        cider clojure-mode   ;; clojure modes
-        paredit              ;; paren god-mode for all lisps
-        smart-mode-line      ;; a beautiful mode line
-        sass-mode rainbow-mode scss-mode markdown-mode
-        flx-ido projectile   ;; project and file navigation
-        undo-tree            ;; amazing undo control with history trees
-        company              ;; better auto-complete
-        company-anaconda     ;; python autocomplete
-        ag flycheck          ;; search & syntax/compiler checking
-        exec-path-from-shell
-        browse-kill-ring     ;; buffer to search kill-ring
-        expand-region        ;; better form selection
-        multiple-cursors     ;; magic
-        coffee-mode haml-mode yaml-mode
-        skewer-mode          ;; inject JS into a browser
-        inf-ruby
-        visual-regexp        ;; preview regexes live
-        web-mode             ;; easy multi-mode for the web
-        scala-mode2 ensime   ;; scala and scala IDE modes
-        yasnippet)
-      "Packages which should always be installed.")
-  #+END_SRC
-
-  This loads a [[https://github.com/millejoh/emacs-ipython-notebook][fork]] of [[https://github.com/tkf/emacs-ipython-notebook][emacs-ipython-notebook]] (EIN), required because the
-  maintainer has stopped maintaining the original, [[https://github.com/tkf/emacs-ipython-notebook/issues/137][yet iPython development
-  marches on]].
-
-  (I have cloned the git repo manually, and keep it in ~./ein-lisp~.)
-
-  #+name: packages
-  #+BEGIN_SRC emacs-lisp
-    (add-to-list 'load-path "~/.emacs.d/ein-lisp")
-    (add-hook 'python-mode-hook '(require 'ein))
-  #+END_SRC
-
-  Finally, if ~(ihodes/install-packages …)~ is uncommented, we install all
-  packages listed above.
-
-  #+name: packages
-  #+BEGIN_SRC emacs-lisp
-    (defun ihodes/install-packages (package-list)
-      "Install all listed packages."
-      (progn
-        (package-refresh-contents)
-        (dolist (p package-list)
-          (when (not (package-installed-p p))
-            (package-install p)))))
-
-    ;; (ihodes/install-packages ihodes/packages)
-  #+END_SRC
 * Defaults
+
   Here we set some defaults which generally make emacs a more well-behaved
   editor.
 
@@ -127,186 +62,177 @@
     (setq kill-ring-max 500)
     (setq js-indent-level 2)
     (setq tramp-default-method "ssh")
+    (setq auto-save-default nil)
+
+    (windmove-default-keybindings)
 
     (require 'uniquify)
     (setq-default uniquify-buffer-name-style 'forward)
 
     (require 'saveplace)
-    (setq-default save-place t)
+    (setq-default save-place t
+                  save-place-file (concat user-emacs-directory "places"))
 
-    (setq-default show-trailing-whitespace t)
-
-    (setq-default auto-save-file-name-transforms
-          `((".*" ,temporary-file-directory t)))
-
-    (setq auto-save-default nil)
-
-    (setq-default fill-column 80)
-    (setq-default indent-tabs-mode nil)
-    (setq-default enable-recursive-minibuffers t)
-    (setq-default apropos-do-all t
-                  save-place-file (concat user-emacs-directory "places")
+    (setq-default indent-tabs-mode nil
+                  fill-column 80
+                  show-trailing-whitespace t
+                  auto-save-file-name-transforms `((".*" ,temporary-file-directory t))
+                  enable-recursive-minibuffers t
+                  apropos-do-all t
                   backup-directory-alist `(("." . ,(concat user-emacs-directory
                                                    "backups"))))
-
-    (when window-system (set-exec-path-from-shell-PATH))
   #+END_SRC
 * Modes
+
   Here we activate modes and do a lot of stuff which should be split out into
   smaller code blocks.
 
+  We load and configure all packages with the glorious [[https://github.com/jwiegley/use-package][use-package]] mode.
+
   #+name: modes
   #+BEGIN_SRC emacs-lisp
-    (require 'flycheck)
-    (add-hook 'after-init-hook #'global-flycheck-mode)
+    (require 'use-package)
+  #+END_SRC
 
-    ;;; Enable paredit for all my lovely lisps.
-    (dolist (x '(scheme emacs-lisp lisp clojure))
-      (add-hook
-       (intern (concat (symbol-name x) "-mode-hook")) 'paredit-mode))
+  And configure most of them...
 
-    ;; The divine web-mode (multiple mode mode that works--mostly).
-    (setq web-mode-engines-alist '(("erb" . "\\.ejs\\'")))
-    (add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
-    (add-to-list 'auto-mode-alist '("\\.jsx\\'" . web-mode))
-    (add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
-    (add-to-list 'auto-mode-alist '("\\.jsp\\'" . web-mode))
-    (add-to-list 'auto-mode-alist '("\\.as[cp]x\\'" . web-mode))
-    (add-to-list 'auto-mode-alist '("\\.erb\\'" . web-mode))
-    (add-to-list 'auto-mode-alist '("\\.ejs\\'" . web-mode))
-    (add-to-list 'auto-mode-alist '("\\.mustache\\'" . web-mode))
-    (add-to-list 'auto-mode-alist '("\\.djhtml\\'" . web-mode))
-    (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (use-package flycheck
+      :init
+      (progn
+        (add-hook 'after-init-hook 'global-flycheck-mode)
+        (flycheck-define-checker jsxhint-checker
+          "A JSX syntax and style checker based on JSXHint."
+          :command ("jsxhint" (config-file "--config=" jshint-configuration-path) source)
+          :error-patterns ((error line-start (1+ nonl) ": line " line ", col " column ", " (message) line-end))
+          :modes (js-mode))
+        (setq auto-mode-alist (remove (rassoc 'html-mode auto-mode-alist)
+                                      auto-mode-alist))))
 
-    ;; smart mode line
-    (setq sml/no-confirm-load-theme t)
-    (sml/setup)
-    (sml/apply-theme 'dark)
-    (add-to-list 'sml/replacer-regexp-list '("^~/workspace/" ":W:") t)
-    (add-to-list 'sml/hidden-modes " Undo-Tree")
-    (add-to-list 'sml/hidden-modes " MRev")
-    (add-to-list 'sml/hidden-modes " Paredit")
-    (add-to-list 'sml/hidden-modes " hl-s")
-    (add-to-list 'sml/hidden-modes " Helm")
-    (add-to-list 'sml/hidden-modes " company")
-    (add-to-list 'sml/hidden-modes " yas")
+    (use-package ace-jump-mode
+      :bind ("M-SPC" . ace-jump-mode))
 
-    ;; js hooks
-    (add-hook 'js-mode-hook 'flycheck-mode)
-    (flycheck-define-checker jsxhint-checker
-      "A JSX syntax and style checker based on JSXHint."
-      :command ("jsxhint" (config-file "--config=" jshint-configuration-path) source)
-      :error-patterns ((error line-start (1+ nonl) ": line " line ", col " column ", " (message) line-end))
-      :modes (js-mode))
+    (use-package paredit
+      :init
+      (dolist (x '(scheme emacs-lisp lisp clojure))
+        (add-hook
+         (intern (concat (symbol-name x) "-mode-hook")) 'paredit-mode)))
 
-    ;; Have to remove the html-mode default; it was interfering with web-mode.
-    (setq auto-mode-alist (remove (rassoc 'html-mode auto-mode-alist) auto-mode-alist))
+    (use-package web-mode
+      :mode
+      (("\\.phtml\\'" . web-mode)
+       ("\\.jsx\\'" . web-mode)
+       ("\\.tpl\\.php\\'" . web-mode)
+       ("\\.jsp\\'" . web-mode)
+       ("\\.as[cp]x\\'" . web-mode)
+       ("\\.erb\\'" . web-mode)
+       ("\\.ejs\\'" . web-mode)
+       ("\\.mustache\\'" . web-mode)
+       ("\\.djhtml\\'" . web-mode)
+       ("\\.html?\\'" . web-mode))
+      :init
+      (setq web-mode-engines-alist '(("erb" . "\\.ejs\\'"))))
 
-    (require 'cider)
+    (use-package smart-mode-line
+      :init
+      (progn
+        (setq sml/no-confirm-load-theme t)
+        (sml/setup)
+        (sml/apply-theme 'dark)
+        (add-to-list 'sml/replacer-regexp-list '("^~/workspace/" ":W:") t)
+        (add-to-list 'sml/hidden-modes " Undo-Tree")
+        (add-to-list 'sml/hidden-modes " MRev")
+        (add-to-list 'sml/hidden-modes " Paredit")
+        (add-to-list 'sml/hidden-modes " hl-s")
+        (add-to-list 'sml/hidden-modes " Helm")
+        (add-to-list 'sml/hidden-modes " company")
+        (add-to-list 'sml/hidden-modes " yas")))
 
-    ;; Auto complete
-    ;; (require 'auto-complete-config)
-    ;; (ac-config-default)
-    ;; (setq ac-show-menu-immediately-on-auto-complete t)
-    ;; (eval-after-load "auto-complete" '(add-to-list 'ac-modes 'cider-mode))
+    (use-package company
+      :init
+      (progn
+        (add-hook 'after-init-hook 'global-company-mode)
+        (add-hook 'after-init-hook
+                  (lambda () (add-to-list 'company-backends 'company-anaconda)))))
 
-    ;; company-mode
-    (require 'company)
-    (add-hook 'after-init-hook 'global-company-mode)
-    (add-hook 'after-init-hook
-              (lambda () (add-to-list 'company-backends 'company-anaconda)))
+    (use-package ag
+      :bind ("<f2>" . ag-project)
+      :init
+      (setq ag-highlight-search t))
 
-    ;; Enable ENSIME with Scala
-    (require 'ensime)
-    (add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
-    (setq ensime-sem-high-faces ;; enable semantic highlighting
-      '(
-       (var . (:foreground "#ff2222"))
-       (val . (:foreground "#dddddd"))
-       (varField . (:foreground "#ff3333"))
-       (valField . (:foreground "#dddddd"))
-       (functionCall . (:foreground "#84BEE3"))
-       (param . (:foreground "#ffffff"))
-       (class . font-lock-type-face)
-       (trait . (:foreground "#084EA8"))
-       (object . (:foreground "#026DF7"))
-       (package . font-lock-preprocessor-face)))
+    (use-package recentf
+      :init
+      (progn
+        (recentf-mode t)
+        (setq recentf-max-saved-items 50)))
 
-    ;; AVDL and Avro mode hacks.
-    (add-to-list 'auto-mode-alist '("\\.avpr?\\'" . js-mode))
-    (add-to-list 'auto-mode-alist '("\\.avdl?\\'" . c-mode))
+    (use-package expand-region
+      :bind (("s-+" . er/expand-region)
+             ("s--" . er/contract-region)))
 
-    ;; Enables the dirtree mode, useful for navigating larger projects.
-    (autoload 'dirtree "dirtree" "Add directory to tree view" t)
+    (use-package visual-regexp
+      :bind (("C-c q" . vr/query-replace)
+             ("C-c r" . vr/replace)
+             ("s-c" . vr/mc-mark)))
 
-    ;; Some plaintext+ modes.
-    (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
-    (add-to-list 'auto-mode-alist '("\\.markdown\\'" . markdown-mode))
-    (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
+    (use-package browse-kill-ring
+      :bind ("C-M-y" . browse-kill-ring))
 
-    ;; Highlight ag searched terms.
-    (setq ag-highlight-search t)
+    (use-package undo-tree-mode
+      :bind (("C-x C-u" . undo-tree-undo)
+             ("C-x C-r" . undo-tree-redo)))
 
-    ;; recentf config
-    (require 'recentf)
-    (recentf-mode t)
-    (setq recentf-max-saved-items 50)
+    (use-package haskell-mode
+      :init
+      (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation))
 
-    ;; Haskell indents
-    (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation)
+    (use-package magit
+      :bind ("C-x g" . magit-status))
 
-    ;; Settings files for more hacked settings.
-    ;; (require 'python-settings)
-    ;; (require 'clojure-settings)
-    ;;(require 'helm-settings)
+    (use-package projectile
+      :bind ("s-p" . projectile-commander)
+      :init
+      (progn
+        (projectile-global-mode)
+        (setq projectile-mode-line
+              '(:eval (format " @:%s" (projectile-project-name))))))
 
-    ;; Gittit
-    ;; (require 'gittit)
+    (use-package rainbow-delimiters
+      :init
+      (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
 
-    ;; Github pull mode c.f. http://endlessparentheses.com/merging-github-pull-requests-from-emacs.html
-    (eval-after-load 'magit
-      '(define-key magit-mode-map "#gg"
-         'endless/load-gh-pulls-mode))
+    (use-package yasnippet
+      :init
+      (progn
+        (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
+        (yas-global-mode 1)))
+  #+END_SRC
 
-    ;; projectile
-    (projectile-global-mode)
-    (setq projectile-mode-line '(:eval (format " @:%s" (projectile-project-name))))
+  Finally we quick'n'dirtily set some little text modes.
 
-    (defun endless/load-gh-pulls-mode ()
-      "Start `magit-gh-pulls-mode' only after a manual request."
-      (interactive)
-      (require 'magit-gh-pulls)
-      (add-hook 'magit-mode-hook 'turn-on-magit-gh-pulls)
-      (magit-gh-pulls-mode 1)
-      (magit-gh-pulls-reload))
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (defvar ihodes/text-modes
+      '(("\\.avpr?\\'" . js-mode)
+        ("\\.avdl?\\'" . c-mode)
+        ("\\.yml\\'" . yaml-mode)
+        ("\\.markdown\\'" . markdown-mode)
+        ("\\.md\\'" . markdown-mode)))
 
-    ;; rainbow parens
-    (add-hook 'prog-mode-hook 'rainbow-delimiters-mode)
+    (dolist (mm ihodes/text-modes)
+      (add-to-list 'auto-mode-alist mm))
+  #+END_SRC
 
-    ;; highlighting
-    ;; (require 'highlight-symbol)
-    ;; (add-hook 'prog-mode-hook 'highlight-symbol-mode)
-    ;; (setq highlight-symbol-idle-delay 0)
+  (And some misc. additional code...)
 
-    ;; enable WindMove for better window nav: shift+arrow keys
-    (windmove-default-keybindings)
-
-    ;; Le Coq
-    (load-file "/usr/local/share/emacs/site-lisp/ProofGeneral/generic/proof-site.el")
-    (autoload 'coq-mode "coq" "Major mode for editing Coq vernacular." t)
-    (setq auto-mode-alist (cons '("\\.v$" . coq-mode) auto-mode-alist))
-    (eval-after-load 'coq-mode '(define-key coq-mode-map (kbd "C-c C-.") 'proof-goto-point))
-
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
     ;; https://github.com/purcell/exec-path-from-shell
     (when (memq window-system '(mac ns))
       (exec-path-from-shell-initialize))
 
-    ;; SQLi
     (add-hook 'sql-interactive-mode-hook '(lambda () (toggle-truncate-lines t)))
-
-    ;; yasnippet
-    (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
-    (yas-global-mode 1)
   #+END_SRC
 ** Org
 
@@ -420,6 +346,33 @@ those here.
       (extend-freeze 2)
       (extend-thaw 1))
   #+END_SRC
+** Scala settings
+   #+name: modes
+   #+BEGIN_SRC emacs-lisp
+     (use-package ensime
+       :init
+       (progn
+         (add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
+         (setq ensime-sem-high-faces
+               '((var . (:foreground "#ff2222"))
+                 (val . (:foreground "#dddddd"))
+                 (varField . (:foreground "#ff3333"))
+                 (valField . (:foreground "#dddddd"))
+                 (functionCall . (:foreground "#84BEE3"))
+                 (param . (:foreground "#ffffff"))
+                 (class . font-lock-type-face)
+                 (trait . (:foreground "#084EA8"))
+                 (object . (:foreground "#026DF7"))
+                 (package . font-lock-preprocessor-face)))))
+   #+END_SRC
+** Coq
+   #+name: modes
+   #+BEGIN_SRC emacs-lisp
+     (load-file "/usr/local/share/emacs/site-lisp/ProofGeneral/generic/proof-site.el")
+     (autoload 'coq-mode "coq" "Major mode for editing Coq vernacular." t)
+     (setq auto-mode-alist (cons '("\\.v$" . coq-mode) auto-mode-alist))
+     (eval-after-load 'coq-mode '(define-key coq-mode-map (kbd "C-c C-.") 'proof-goto-point))
+   #+END_SRC
 * Gittit
   ~gittit~ is a little library I wrote to connect local files to GitHub repos.
 
@@ -551,34 +504,31 @@ those here.
         (back-to-indentation)
         (when (= orig-point (point))
           (move-beginning-of-line 1))))
+
+    (defun endless/load-gh-pulls-mode ()
+      "Start `magit-gh-pulls-mode' only after a manual request."
+      (interactive)
+      (require 'magit-gh-pulls)
+      (add-hook 'magit-mode-hook 'turn-on-magit-gh-pulls)
+      (magit-gh-pulls-mode 1)
+      (magit-gh-pulls-reload))
+
   #+END_SRC
 * Bindings
-  Global and some mode-specific bindings that may need to be cleaned up.
+
+  Global and some mode-specific bindings that need to be cleaned up.
+
   #+name: bindings
   #+BEGIN_SRC emacs-lisp
     (global-set-key (kbd "C-x C-b") 'ibuffer)
-
     (global-set-key (kbd "C-s") #'isearch-forward-regexp)
     (global-set-key (kbd "C-r") #'isearch-backward-regexp)
 
-    (global-set-key (kbd "C-c r") #'replace-regexp)
-
-    (global-set-key (kbd "C-x C-u") #'undo-tree-undo)
-    (global-set-key (kbd "C-x C-r") #'undo-tree-redo)
-
-    (global-set-key (kbd "C-x g") #'magit-status)
-    ;; (global-set-key (kbd "C-x C-g") 'browse-github-url-for-line)
-    (global-set-key (kbd "s-p") #'projectile-commander)
-
     (global-set-key (kbd "<f1>") #'eshell)
-    (global-set-key (kbd "<f2>") #'ag-project)
     (global-set-key (kbd "<f3>") #'occur)
     (global-set-key (kbd "<f4>") #'ido-recentf-open)
     (global-set-key (kbd "<f5>") #'highlight-symbol-at-point)
     (global-set-key (kbd "<f6>") #'revert-this-buffer)
-
-    (global-set-key (kbd "s--") #'er/contract-region)
-    (global-set-key (kbd "s-=") #'er/expand-region)
 
     (global-set-key (kbd "C-c M-w") #'whitespace-mode)
 
@@ -586,10 +536,6 @@ those here.
 
     (global-set-key (kbd "C-x t") '(lambda () (interactive) (insert "TODO(ihodes): ")))
 
-    (define-key global-map (kbd "C-c r") #'vr/replace)
-    (define-key global-map (kbd "C-c q") #'vr/query-replace)
-
-    (global-set-key (kbd "s-c") #'vr/mc-mark)
     (global-set-key (kbd "M-s-≥") #'mc/mark-next-lines)
 
     (global-set-key (kbd "C-x w") #'delete-trailing-whitespace)
@@ -597,8 +543,6 @@ those here.
     (global-set-key (kbd "C-x C-d") #'ido-dired)
 
     (global-set-key (kbd "C-c C-e") #'eval-buffer)
-
-    (global-set-key (kbd "C-M-y") #'browse-kill-ring)
 
     (define-key 'help-command "A" #'apropos) ;; (C-h a)
 
@@ -681,15 +625,17 @@ projects I frequently work on.
                            "*vcf.js: server*"))
   #+END_SRC
 ** Idiogrammatik.js
+
    Found on [[https://github.com/hammerlab/idiogrammatik][GitHub]].
-  #+name: projects
-  #+BEGIN_SRC emacs-lisp
+
+   #+name: projects
+   #+BEGIN_SRC emacs-lisp
     (defun idiogrammatik:server ()
       "Run the idiogrammatik server"
       (interactive)
       (async-shell-command "cd ~/workspace/idiogrammatik/ && http-server -p 8989"
                            "*idiogrammatik: server*"))
-  #+END_SRC
+   #+END_SRC
 * Configuration file layout
 
   Here I define the ~emacs.el~ file generated by the code in this org file.
