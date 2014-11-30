@@ -234,6 +234,7 @@
 
     (add-hook 'sql-interactive-mode-hook '(lambda () (toggle-truncate-lines t)))
   #+END_SRC
+
 ** Org
 
 Very rudimentary customization of ~org-mode~.
@@ -243,12 +244,21 @@ Android!) app. We also enable support for a variety of languages.
 
 #+name: modes
 #+BEGIN_SRC emacs-lisp
+  (bind-key "C-c c" 'org-capture)
+  (bind-key "C-c a" 'org-agenda)
+  (bind-key "C-TAB" 'org-cycle org-mode-map)
+  (bind-key "C-c v" 'org-show-todo-tree org-mode-map)
+  (add-hook 'org-mode-hook
+   '(lambda  (set (make-local-variable 'show-trailing-whitespace) nil)))
+  (set (make-local-variable 'foo) "value")
   (setq org-directory "~/org/")
+  (setq org-default-notes-file "~/org/notes.org")
   (setq org-mobile-directory "~/Dropbox/Apps/MobileOrg")
 
   (org-babel-do-load-languages
    (quote org-babel-load-languages)
    (quote ((emacs-lisp . t)
+           (ditaa . t)
            (dot . t)
            (clojure . t)
            (js . t)
@@ -259,7 +269,155 @@ Android!) app. We also enable support for a variety of languages.
            (ledger . t)
            (org . t)
            (latex . t))))
+
+  (setq org-modules '(org-info
+                      org-habit))
+  (org-load-modules-maybe t)
 #+END_SRC
+
+*** Emacs Capture
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+
+  (defvar ihodes/org-basic-task-template "* TODO %^{Task}
+  SCHEDULED: %^t
+  %?
+  :PROPERTIES:
+
+  :Effort: %^{effort|1:00|0:05|0:15|0:30|2:00|4:00}
+  :END:" "Basic task data")
+
+  (setq org-capture-templates
+        `(("t" "Tasks" entry
+           (file+headline "~/org/organize.org" "Tasks")
+           ,ihodes/org-basic-task-template)
+          ("j" "Journal entry" plain
+           (file+datetree+prompt "~/org/journal.org")
+           "%K - %a\n%i\n%?\n")
+          ("dt" "Done - Task" entry
+           (file+headline "~/org/organize.org" "Tasks")
+           "* DONE %^{Task}\nSCHEDULED: %^t\n%?")
+          ("q" "Quick note" item
+           (file+headline "~/org/organize.org" "Quick notes"))
+          ("b" "Book" entry
+           (file+datetree "~/org/books.org" "Inbox")
+           "* %^{Title}  %^g
+  %i
+  ,*Author(s):* %^{Author} \\\\
+  ,*ISBN:* %^{ISBN}
+
+  %?
+
+  ,*Finished on:* %^t \\
+  %a
+  %U"
+           :clock-in :clock-resume)
+          ("p" "Paper" entry
+           (file+datetree "~/org/papers.org" "Inbox")
+           "* %^{Title}  %^g
+  %i
+  ,*Author(s):* %^{Author} \\\\
+
+  %?
+
+  ,*Finished on:* %^t \\
+  %a
+  %U"
+           :clock-in :clock-resume)))
+
+#+END_SRC
+
+From [[http://pages.sachachua.com/.emacs.d/Sacha.html#sec-1-8][Sacha]], "~org-refile~ lets you organize notes by typing in the headline to
+file them under."
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+  (setq org-reverse-note-order t)
+  (setq org-refile-use-outline-path nil)
+  (setq org-refile-allow-creating-parent-nodes 'confirm)
+  (setq org-refile-use-cache nil)
+  (setq org-refile-targets '((org-agenda-files . (:maxlevel . 6))))
+  (setq org-blank-before-new-entry nil)
+#+END_SRC
+
+*** Projects and Todos
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+  (setq org-todo-keywords
+   '((sequence
+      "TODO(t)"
+      "WAITING(w@/!)"
+      "SOMEDAY(.)"
+      "|" "DONE(x!)" "CANCELLED(c@)")))
+
+  (setq org-todo-keyword-faces
+        '(("TODO" . (:foreground "green" :weight bold))
+          ("DONE" . (:foreground "cyan" :weight bold))
+          ("WAITING" . (:foreground "red" :weight bold))
+          ("SOMEDAY" . (:foreground "gray" :weight bold))
+          ("CANCELLED" . (:foreground "gray" :weight bold))))
+
+  (setq org-log-done 'time)
+  (setq org-log-done 'note)
+  (setq org-log-into-drawer t)
+
+  (setq org-tags-exclude-from-inheritance '("project"))
+
+  (setq org-tag-alist '(("@work" . ?b)
+                        ("@home" . ?h)
+                        ("@writing" . ?w)
+                        ("@errands" . ?e)
+                        ("@drawing" . ?d)
+                        ("@coding" . ?c)
+                        ("@phone" . ?p)
+                        ("@reading" . ?r)
+                        ("@computer" . ?l)
+                        ("@studying" . ?s)
+                        ("quantified" . ?q)
+                        ("lowenergy" . ?0)
+                        ("highenergy" . ?1)))
+
+  (add-to-list 'org-global-properties
+    '("Effort_ALL". "0:05 0:15 0:30 1:00 2:00 3:00 4:00"))
+#+END_SRC
+
+*** Agenda
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+  (use-package org-agenda
+    :init (bind-key "i" 'org-agenda-clock-in org-agenda-mode-map))
+
+  (setq org-agenda-files
+        (delq nil
+              (mapcar (lambda (x) (and (file-exists-p x) x))
+                      '("~/org/organize.org"))))
+
+  (setq org-agenda-span 2)
+  (setq org-agenda-sticky nil)
+  (setq org-agenda-show-log t)
+  (setq org-agenda-skip-scheduled-if-done t)
+  (setq org-agenda-skip-deadline-if-done t)
+  (setq org-agenda-skip-deadline-prewarning-if-scheduled 'pre-scheduled)
+  (setq org-agenda-time-grid
+        '((daily today require-timed)
+         "----------------"
+         (800 1000 1200 1400 1600 1800)))
+  (setq org-columns-default-format "%50ITEM %12SCHEDULED %TODO %3PRIORITY %Effort{:} %TAGS")
+  (setq org-agenda-start-on-weekday 6)
+#+END_SRC
+
+Org Habits config:
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+  (setq org-habit-graph-column 80)
+  (setq org-habit-show-habits-only-for-today nil)
+#+END_SRC
+
+*** Misc
 
 We need to unbind ~S-<left|right|up|down>~ because ~org-mode~ steals these from
 ~windmove~, which is not cool.
