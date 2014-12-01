@@ -246,11 +246,7 @@ Android!) app. We also enable support for a variety of languages.
 #+BEGIN_SRC emacs-lisp
   (bind-key "C-c c" 'org-capture)
   (bind-key "C-c a" 'org-agenda)
-  (bind-key "C-TAB" 'org-cycle org-mode-map)
-  (bind-key "C-c v" 'org-show-todo-tree org-mode-map)
-  (add-hook 'org-mode-hook
-   '(lambda  (set (make-local-variable 'show-trailing-whitespace) nil)))
-  (set (make-local-variable 'foo) "value")
+
   (setq org-directory "~/org/")
   (setq org-default-notes-file "~/org/notes.org")
   (setq org-mobile-directory "~/Dropbox/Apps/MobileOrg")
@@ -269,9 +265,11 @@ Android!) app. We also enable support for a variety of languages.
            (ledger . t)
            (org . t)
            (latex . t))))
+  (setq org-src-fontify-natively nil)
 
   (setq org-modules '(org-info
                       org-habit))
+
   (org-load-modules-maybe t)
 #+END_SRC
 
@@ -288,43 +286,51 @@ Android!) app. We also enable support for a variety of languages.
   :Effort: %^{effort|1:00|0:05|0:15|0:30|2:00|4:00}
   :END:" "Basic task data")
 
+  (defvar ihodes/org-basic-schedule-template "* %^{Event}
+  %^T
+  %?
+  :PROPERTIES:
+
+  :Location: %^{Location}
+  :END:" "Basic schedule data")
+
   (setq org-capture-templates
         `(("t" "Tasks" entry
            (file+headline "~/org/organize.org" "Tasks")
            ,ihodes/org-basic-task-template)
+          ("s" "Schedule" entry
+           (file+headline "~/org/organize.org" "Schedule")
+           ,ihodes/org-basic-schedule-template)
           ("j" "Journal entry" plain
            (file+datetree+prompt "~/org/journal.org")
-           "%K - %a\n%i\n%?\n")
+           "%?\n")
+          ("m" "Meeting" plain
+           (file+datetree+prompt "~/org/organize.org" "Meetings")
+           "** %^{Meeting}\n%T\n%?\n")
           ("dt" "Done - Task" entry
            (file+headline "~/org/organize.org" "Tasks")
            "* DONE %^{Task}\nSCHEDULED: %^t\n%?")
           ("q" "Quick note" item
            (file+headline "~/org/organize.org" "Quick notes"))
           ("b" "Book" entry
-           (file+datetree "~/org/books.org" "Inbox")
+           (file+datetree "~/org/reading.org" "Books")
            "* %^{Title}  %^g
   %i
-  ,*Author(s):* %^{Author} \\\\
-  ,*ISBN:* %^{ISBN}
+  ,*Author(s):* %^{Author}
+  ,*Rating:* %^{Rating|1|2|3|4|5|6|7|8|9|10}
 
   %?
 
-  ,*Finished on:* %^t \\
-  %a
-  %U"
-           :clock-in :clock-resume)
+  ,*Finished on:* %^t")
           ("p" "Paper" entry
-           (file+datetree "~/org/papers.org" "Inbox")
+           (file+datetree "~/org/reading.org" "Papers")
            "* %^{Title}  %^g
   %i
-  ,*Author(s):* %^{Author} \\\\
+  ,*Author(s):* %^{Author}
 
   %?
 
-  ,*Finished on:* %^t \\
-  %a
-  %U"
-           :clock-in :clock-resume)))
+  ,*Finished on:* %^t")))
 
 #+END_SRC
 
@@ -334,11 +340,65 @@ file them under."
 #+name: modes
 #+BEGIN_SRC emacs-lisp
   (setq org-reverse-note-order t)
-  (setq org-refile-use-outline-path nil)
+  (setq org-refile-use-outline-path 'file)
   (setq org-refile-allow-creating-parent-nodes 'confirm)
   (setq org-refile-use-cache nil)
+  (setq org-log-refile t)
   (setq org-refile-targets '((org-agenda-files . (:maxlevel . 6))))
   (setq org-blank-before-new-entry nil)
+#+END_SRC
+
+*** Agenda
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+  (use-package org-agenda
+    :init
+    (progn
+      (bind-key "i" 'org-agenda-clock-in org-agenda-mode-map)
+      (bind-key "C-c C-u" 'org-agenda-undo org-agenda-mode-map)
+      (dolist (dir '("left" "right" "up" "down"))
+        (bind-key (kbd (format "S-<%s>" dir)) nil org-agenda-mode-map))
+      (bind-key "<C-S-down>" 'org-agenda-priority-down org-agenda-mode-map)
+      (bind-key "<C-S-up>" 'org-agenda-priority-up org-agenda-mode-map)
+      (bind-key "<C-S-left>" 'org-agenda-do-date-earlier org-agenda-mode-map)
+      (bind-key "<C-S-right>" 'org-agenda-do-date-later org-agenda-mode-map)))
+
+  (setq org-agenda-files
+        (delq nil
+              (mapcar (lambda (x) (and (file-exists-p x) x))
+                      '("~/org/organize.org"))))
+
+  (setq org-refile-targets '(("organize.org" :maxlevel . 1)
+                             ("someday.org" :level . 2)))
+
+  (setq org-agenda-span 3)
+  (setq org-agenda-sticky nil)
+  (setq org-agenda-show-log t)
+  (setq org-agenda-skip-scheduled-if-done t)
+  (setq org-agenda-skip-deadline-if-done t)
+  (setq org-agenda-skip-deadline-prewarning-if-scheduled 'pre-scheduled)
+  (setq org-agenda-time-grid
+        '((daily today require-timed)
+         "----------------"
+         (800 1000 1200 1400 1600 1800)))
+  (setq org-columns-default-format "%50ITEM %12SCHEDULED %TODO %3PRIORITY %Effort{:} %TAGS")
+  (setq org-agenda-start-on-weekday 6)
+#+END_SRC
+
+Org Habits config:
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+  (setq org-habit-graph-column 80)
+  (setq org-habit-show-habits-only-for-today t)
+#+END_SRC
+
+We want to archive things under their CLOSED or archived date.
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+(setq org-archive-location "%s_archive::datetree/")
 #+END_SRC
 
 *** Projects and Todos
@@ -369,13 +429,11 @@ file them under."
                         ("@home" . ?h)
                         ("@writing" . ?w)
                         ("@errands" . ?e)
-                        ("@drawing" . ?d)
-                        ("@coding" . ?c)
+                        ("@hacking" . ?h)
                         ("@phone" . ?p)
-                        ("@reading" . ?r)
-                        ("@computer" . ?l)
+                        ("@computer" . ?c)
                         ("@studying" . ?s)
-                        ("quantified" . ?q)
+                        ("@reading" . ?r)
                         ("lowenergy" . ?0)
                         ("highenergy" . ?1)))
 
@@ -383,41 +441,21 @@ file them under."
     '("Effort_ALL". "0:05 0:15 0:30 1:00 2:00 3:00 4:00"))
 #+END_SRC
 
-*** Agenda
-
-#+name: modes
-#+BEGIN_SRC emacs-lisp
-  (use-package org-agenda
-    :init (bind-key "i" 'org-agenda-clock-in org-agenda-mode-map))
-
-  (setq org-agenda-files
-        (delq nil
-              (mapcar (lambda (x) (and (file-exists-p x) x))
-                      '("~/org/organize.org"))))
-
-  (setq org-agenda-span 2)
-  (setq org-agenda-sticky nil)
-  (setq org-agenda-show-log t)
-  (setq org-agenda-skip-scheduled-if-done t)
-  (setq org-agenda-skip-deadline-if-done t)
-  (setq org-agenda-skip-deadline-prewarning-if-scheduled 'pre-scheduled)
-  (setq org-agenda-time-grid
-        '((daily today require-timed)
-         "----------------"
-         (800 1000 1200 1400 1600 1800)))
-  (setq org-columns-default-format "%50ITEM %12SCHEDULED %TODO %3PRIORITY %Effort{:} %TAGS")
-  (setq org-agenda-start-on-weekday 6)
-#+END_SRC
-
-Org Habits config:
-
-#+name: modes
-#+BEGIN_SRC emacs-lisp
-  (setq org-habit-graph-column 80)
-  (setq org-habit-show-habits-only-for-today nil)
-#+END_SRC
-
 *** Misc
+
+Linked images are shown by default.
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+    (setq org-startup-with-inline-images t)
+#+END_SRC
+
+Show special characters using UTF8.
+
+#+name: modes
+#+BEGIN_SRC emacs-lisp
+  (setq org-pretty-entities t)
+#+END_SRC
 
 We need to unbind ~S-<left|right|up|down>~ because ~org-mode~ steals these from
 ~windmove~, which is not cool.

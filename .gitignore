@@ -9,3 +9,5 @@ emacs.el
 ein-lisp/
 .#*
 .cask
+/bookmarks
+/emacs.html

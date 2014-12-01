@@ -1,5 +1,6 @@
 (source gnu)
 (source melpa)
+(source marmalade)
 
 (depends-on "bind-key")
 (depends-on "cask")
@@ -61,6 +62,3 @@
 (depends-on "web-mode")
 (depends-on "scala-mode2")
 (depends-on "ensime")
-;;(depends-on "emacs-ipython-notebook"
-;;            :git "git@github.com:millejoh/emacs-ipython-notebook.git"
-;;            :ref "b83621299e1f44f828decd2a989bfbf6697add54")
