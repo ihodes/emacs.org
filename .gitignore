@@ -11,3 +11,6 @@ ein-lisp/
 .cask
 /bookmarks
 /emacs.html
+/eshell/
+/var/
+/.mc-lists.el

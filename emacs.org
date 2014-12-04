@@ -98,125 +98,130 @@
 
   #+name: modes
   #+BEGIN_SRC emacs-lisp
-    (use-package flycheck
-      :init
-      (progn
-        (add-hook 'after-init-hook 'global-flycheck-mode)
-        (flycheck-define-checker jsxhint-checker
-          "A JSX syntax and style checker based on JSXHint."
-          :command ("jsxhint" (config-file "--config=" jshint-configuration-path) source)
-          :error-patterns ((error line-start (1+ nonl) ": line " line ", col " column ", " (message) line-end))
-          :modes (js-mode))
-        (setq auto-mode-alist (remove (rassoc 'html-mode auto-mode-alist)
-                                      auto-mode-alist))))
+        (use-package flycheck
+          :init
+          (progn
+            (add-hook 'after-init-hook 'global-flycheck-mode)
+            (flycheck-define-checker jsxhint-checker
+              "A JSX syntax and style checker based on JSXHint."
+              :command ("jsxhint" (config-file "--config=" jshint-configuration-path) source)
+              :error-patterns ((error line-start (1+ nonl) ": line " line ", col " column ", " (message) line-end))
+              :modes (js-mode))
+            (setq auto-mode-alist (remove (rassoc 'html-mode auto-mode-alist)
+                                          auto-mode-alist))))
 
-    (use-package ace-jump-mode
-      :bind ("M-SPC" . ace-jump-mode))
+        (use-package ace-jump-mode
+          :bind ("M-SPC" . ace-jump-mode))
 
-    (use-package paredit
-      :init
-      (dolist (x '(scheme emacs-lisp lisp clojure))
-        (add-hook
-         (intern (concat (symbol-name x) "-mode-hook")) 'paredit-mode)))
+        (use-package paredit
+          :init
+          (dolist (x '(scheme emacs-lisp lisp clojure))
+            (add-hook
+             (intern (concat (symbol-name x) "-mode-hook")) 'paredit-mode)))
 
-    (use-package web-mode
-      :mode
-      (("\\.phtml\\'" . web-mode)
-       ("\\.jsx\\'" . web-mode)
-       ("\\.tpl\\.php\\'" . web-mode)
-       ("\\.jsp\\'" . web-mode)
-       ("\\.as[cp]x\\'" . web-mode)
-       ("\\.erb\\'" . web-mode)
-       ("\\.ejs\\'" . web-mode)
-       ("\\.mustache\\'" . web-mode)
-       ("\\.djhtml\\'" . web-mode)
-       ("\\.html?\\'" . web-mode))
-      :init
-      (setq web-mode-engines-alist '(("erb" . "\\.ejs\\'"))))
+        (use-package web-mode
+          :mode
+          (("\\.phtml\\'" . web-mode)
+           ("\\.jsx\\'" . web-mode)
+           ("\\.tpl\\.php\\'" . web-mode)
+           ("\\.jsp\\'" . web-mode)
+           ("\\.as[cp]x\\'" . web-mode)
+           ("\\.erb\\'" . web-mode)
+           ("\\.ejs\\'" . web-mode)
+           ("\\.mustache\\'" . web-mode)
+           ("\\.djhtml\\'" . web-mode)
+           ("\\.html?\\'" . web-mode)
+           ("\\.css?\\'" . web-mode))
+          :init
+          (progn
+            (setq web-mode-markup-indent-offset 2)
+            (setq web-mode-css-indent-offset 2)
+            (setq web-mode-engines-alist '(("erb" . "\\.ejs\\'"))))
+          :bind ("C-c /" . web-mode-element-close))
 
-    (use-package smart-mode-line
-      :init
-      (progn
-        (setq sml/no-confirm-load-theme t)
-        (sml/setup)
-        (sml/apply-theme 'dark)
-        (add-to-list 'sml/replacer-regexp-list '("^~/workspace/" ":W:") t)
-        (add-to-list 'sml/hidden-modes " Undo-Tree")
-        (add-to-list 'sml/hidden-modes " MRev")
-        (add-to-list 'sml/hidden-modes " Paredit")
-        (add-to-list 'sml/hidden-modes " hl-s")
-        (add-to-list 'sml/hidden-modes " Helm")
-        (add-to-list 'sml/hidden-modes " company")
-        (add-to-list 'sml/hidden-modes " yas")))
+        (use-package smart-mode-line
+          :init
+          (progn
+            (setq sml/no-confirm-load-theme t)
+            (sml/setup)
+            (sml/apply-theme 'dark)
+            (add-to-list 'sml/replacer-regexp-list '("^~/workspace/" ":W:") t)
+            (add-to-list 'sml/hidden-modes " Undo-Tree")
+            (add-to-list 'sml/hidden-modes " MRev")
+            (add-to-list 'sml/hidden-modes " Paredit")
+            (add-to-list 'sml/hidden-modes " hl-s")
+            (add-to-list 'sml/hidden-modes " Helm")
+            (add-to-list 'sml/hidden-modes " company")
+            (add-to-list 'sml/hidden-modes " yas")))
 
-    (use-package company
-      :init
-      (progn
-        (add-hook 'after-init-hook 'global-company-mode)
-        (add-hook 'after-init-hook
-                  (lambda () (add-to-list 'company-backends 'company-anaconda)))))
+        (use-package company
+          :init
+          (progn
+            (add-hook 'after-init-hook 'global-company-mode)
+            (add-hook 'after-init-hook
+                      (lambda () (add-to-list 'company-backends 'company-anaconda)))))
 
-    (use-package ag
-      :bind ("<f2>" . ag-project)
-      :init
-      (setq ag-highlight-search t))
+        (use-package ag
+          :bind ("<f2>" . ag-project)
+          :init
+          (setq ag-highlight-search t))
 
-    (use-package recentf
-      :init
-      (progn
-        (recentf-mode t)
-        (setq recentf-max-saved-items 50)))
+        (use-package recentf
+          :init
+          (progn
+            (recentf-mode t)
+            (setq recentf-max-saved-items 50)))
 
-    (use-package expand-region
-      :bind (("s-+" . er/expand-region)
-             ("s--" . er/contract-region)))
+        (use-package expand-region
+          :bind (("s-=" . er/expand-region)
+                 ("s--" . er/contract-region)))
 
-    (use-package visual-regexp
-      :bind (("C-c q" . vr/query-replace)
-             ("C-c r" . vr/replace)
-             ("s-c" . vr/mc-mark)))
+        (use-package visual-regexp
+          :bind (("C-c q" . vr/query-replace)
+                 ("C-c r" . vr/replace)
+                 ("s-c" . vr/mc-mark)))
 
-    (use-package browse-kill-ring
-      :bind ("C-M-y" . browse-kill-ring))
+        (use-package browse-kill-ring
+          :bind ("C-M-y" . browse-kill-ring))
 
-    (use-package undo-tree-mode
-      :bind (("C-x C-u" . undo-tree-undo)
-             ("C-x C-r" . undo-tree-redo)))
+        (use-package undo-tree-mode
+          :bind (("C-x C-u" . undo-tree-undo)
+                 ("C-x C-r" . undo-tree-redo)))
 
-    (use-package haskell-mode
-      :init
-      (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation))
+        (use-package haskell-mode
+          :init
+          (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation))
 
-    (defun endless/load-gh-pulls-mode ()
-      "Start `magit-gh-pulls-mode' only after a manual request."
-      (interactive)
-      (require 'magit-gh-pulls)
-      (add-hook 'magit-mode-hook 'turn-on-magit-gh-pulls)
-      (magit-gh-pulls-mode 1)
-      (magit-gh-pulls-reload))
+        (defun endless/load-gh-pulls-mode ()
+          "Start `magit-gh-pulls-mode' only after a manual request."
+          (interactive)
+          (require 'magit-gh-pulls)
+          (add-hook 'magit-mode-hook 'turn-on-magit-gh-pulls)
+          (magit-gh-pulls-mode 1)
+          (magit-gh-pulls-reload))
 
-    (use-package magit
-      :bind ("C-x g" . magit-status)
-      :config (define-key magit-mode-map "#gg"
-                 'endless/load-gh-pulls-mode))
+        (use-package magit
+          :bind ("C-x g" . magit-status)
+          :config (define-key magit-mode-map "#gg"
+                     'endless/load-gh-pulls-mode))
 
-    (use-package projectile
-      :bind ("s-p" . projectile-commander)
-      :init
-      (progn
-        (projectile-global-mode)
-        (setq projectile-mode-line
-              '(:eval (format " @:%s" (projectile-project-name))))))
+        (use-package projectile
+          :bind ("s-p" . projectile-commander)
+          :init
+          (progn
+            (projectile-global-mode)
+            (setq projectile-mode-line
+                  '(:eval (format " @:%s" (projectile-project-name))))))
 
-    (use-package rainbow-delimiters
-      :init
-      (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
+        (use-package rainbow-delimiters
+          :init
+          (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
 
-    (use-package yasnippet
-      :init
-      (progn
-        (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
-        (yas-global-mode 1)))
+        (use-package yasnippet
+          :init
+          (progn
+            (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
+            (yas-global-mode 1)))
   #+END_SRC
 
   Finally we quick'n'dirtily set some little text modes.
@@ -283,193 +288,6 @@ Android!) app. We also enable support for a variety of languages.
   (org-load-modules-maybe t)
 #+END_SRC
 
-*** Emacs Capture
-
-#+name: org
-#+BEGIN_SRC emacs-lisp
-
-  (defvar ihodes/org-basic-task-template "* TODO %^{Task}
-  SCHEDULED: %^t
-  %?
-  :PROPERTIES:
-
-  :Effort: %^{effort|1:00|0:05|0:15|0:30|2:00|4:00}
-  :END:" "Basic task data")
-
-  (defvar ihodes/org-basic-schedule-template "* %^{Event}
-  %^T
-  %?
-  :PROPERTIES:
-
-  :Location: %^{Location}
-  :END:" "Basic schedule data")
-
-  (setq org-capture-templates
-        `(("t" "Tasks" entry
-           (file+headline "~/org/organize.org" "Tasks")
-           ,ihodes/org-basic-task-template)
-          ("s" "Schedule" entry
-           (file+headline "~/org/organize.org" "Schedule")
-           ,ihodes/org-basic-schedule-template)
-          ("j" "Journal entry" plain
-           (file+datetree+prompt "~/org/journal.org")
-           "%?\n")
-          ("w" "Work journal entry" plain
-           (file+datetree+prompt "~/org/work-journal.org")
-           "%?\n")
-          ("m" "Meeting" plain
-           (file+datetree+prompt "~/org/organize.org" "Meetings")
-           "** %^{Meeting}\n%T\n%?\n")
-          ("dt" "Done - Task" entry
-           (file+headline "~/org/organize.org" "Tasks")
-           "* DONE %^{Task}\nSCHEDULED: %^t\n%?")
-          ("q" "Quick note" item
-           (file+headline "~/org/organize.org" "Quick notes"))
-          ("b" "Book" entry
-           (file+datetree "~/org/reading.org" "Books")
-           "* %^{Title}  %^g
-  %i
-  ,*Author(s):* %^{Author}
-  ,*Rating:* %^{Rating|1|2|3|4|5|6|7|8|9|10}
-
-  %?
-
-  ,*Finished on:* %^t")
-          ("p" "Paper" entry
-           (file+datetree "~/org/reading.org" "Papers")
-           "* %^{Title}  %^g
-  %i
-  ,*Author(s):* %^{Author}
-
-  %?
-
-  ,*Finished on:* %^t")))
-
-#+END_SRC
-
-From [[http://pages.sachachua.com/.emacs.d/Sacha.html#sec-1-8][Sacha]], "~org-refile~ lets you organize notes by typing in the headline to
-file them under."
-
-#+name: org
-#+BEGIN_SRC emacs-lisp
-  (setq org-reverse-note-order t)
-  (setq org-refile-use-outline-path 'file)
-  (setq org-refile-allow-creating-parent-nodes 'confirm)
-  (setq org-refile-use-cache nil)
-  (setq org-log-refile t)
-  (setq org-refile-targets '((org-agenda-files . (:maxlevel . 6))))
-  (setq org-blank-before-new-entry nil)
-#+END_SRC
-
-*** Agenda
-
-#+name: org
-#+BEGIN_SRC emacs-lisp
-  (use-package org-agenda
-    :init
-    (progn
-      (bind-key "i" 'org-agenda-clock-in org-agenda-mode-map)
-      (bind-key "C-c C-u" 'org-agenda-undo org-agenda-mode-map)
-      (dolist (dir '("left" "right" "up" "down"))
-        (bind-key (kbd (format "S-<%s>" dir)) nil org-agenda-mode-map))
-      (bind-key "<C-S-down>" 'org-agenda-priority-down org-agenda-mode-map)
-      (bind-key "<C-S-up>" 'org-agenda-priority-up org-agenda-mode-map)
-      (bind-key "<C-S-left>" 'org-agenda-do-date-earlier org-agenda-mode-map)
-      (bind-key "<C-S-right>" 'org-agenda-do-date-later org-agenda-mode-map)))
-
-  (setq org-agenda-files
-        (delq nil
-              (mapcar (lambda (x) (and (file-exists-p x) x))
-                      '("~/org/organize.org"))))
-
-  (setq org-refile-targets '(("organize.org" :maxlevel . 1)
-                             ("someday.org" :level . 2)))
-
-  (setq org-agenda-span 3)
-  (setq org-agenda-sticky nil)
-  (setq org-agenda-show-log t)
-  (setq org-agenda-skip-scheduled-if-done t)
-  (setq org-agenda-skip-deadline-if-done t)
-  (setq org-agenda-skip-deadline-prewarning-if-scheduled 'pre-scheduled)
-  (setq org-agenda-time-grid
-        '((daily today require-timed)
-         "----------------"
-         (800 1000 1200 1400 1600 1800)))
-  (setq org-columns-default-format "%50ITEM %12SCHEDULED %TODO %3PRIORITY %Effort{:} %TAGS")
-  (setq org-agenda-start-on-weekday 6)
-#+END_SRC
-
-Org Habits config:
-
-#+name: org
-#+BEGIN_SRC emacs-lisp
-  (setq org-habit-graph-column 80)
-  (setq org-habit-show-habits-only-for-today t)
-#+END_SRC
-
-We want to archive things under their CLOSED or archived date.
-
-#+name: org
-#+BEGIN_SRC emacs-lisp
-(setq org-archive-location "%s_archive::datetree/")
-#+END_SRC
-
-*** Projects and Todos
-
-#+name: org
-#+BEGIN_SRC emacs-lisp
-  (setq org-todo-keywords
-   '((sequence
-      "TODO(t)"
-      "WAITING(w@/!)"
-      "SOMEDAY(.)"
-      "|" "DONE(x!)" "CANCELLED(c@)")))
-
-  (setq org-todo-keyword-faces
-        '(("TODO" . (:foreground "green" :weight bold))
-          ("DONE" . (:foreground "cyan" :weight bold))
-          ("WAITING" . (:foreground "red" :weight bold))
-          ("SOMEDAY" . (:foreground "gray" :weight bold))
-          ("CANCELLED" . (:foreground "gray" :weight bold))))
-
-  (setq org-log-done 'time)
-  (setq org-log-done 'note)
-  (setq org-log-into-drawer t)
-
-  (setq org-tags-exclude-from-inheritance '("project"))
-
-  (setq org-tag-alist '(("@work" . ?b)
-                        ("@home" . ?h)
-                        ("@writing" . ?w)
-                        ("@errands" . ?e)
-                        ("@hacking" . ?h)
-                        ("@phone" . ?p)
-                        ("@computer" . ?c)
-                        ("@studying" . ?s)
-                        ("@reading" . ?r)
-                        ("lowenergy" . ?0)
-                        ("highenergy" . ?1)))
-
-  (add-to-list 'org-global-properties
-    '("Effort_ALL". "0:05 0:15 0:30 1:00 2:00 3:00 4:00"))
-#+END_SRC
-
-*** Misc
-
-Linked images are shown by default.
-
-#+name: org
-#+BEGIN_SRC emacs-lisp
-    (setq org-startup-with-inline-images t)
-#+END_SRC
-
-Show special characters using UTF8.
-
-#+name: org
-#+BEGIN_SRC emacs-lisp
-  (setq org-pretty-entities t)
-#+END_SRC
-
 We need to unbind ~S-<left|right|up|down>~ because ~org-mode~ steals these from
 ~windmove~, which is not cool.
 
@@ -478,56 +296,6 @@ We need to unbind ~S-<left|right|up|down>~ because ~org-mode~ steals these from
   (dolist (dir '("left" "right" "up" "down"))
     (define-key org-mode-map (kbd (format "S-<%s>" dir)) nil))
 #+END_SRC
-** Mail (mu4e)
-   #+name: mail
-   #+BEGIN_SRC emacs-lisp
-     (add-to-list 'load-path "/usr/local/Cellar/mu/HEAD/share/emacs/site-lisp/mu4e/")
-
-     (require 'mu4e)
-     (setq mail-user-agent 'mu4e-user-agent)
-
-     (setq mu4e-get-mail-command "offlineimap"
-           mu4e-update-interval 300)
-
-     (global-set-key (kbd "C-c m") 'mu4e)
-
-     (setq mu4e-attachment-dir "~/Downloads")
-
-     (setq mu4e-sent-messages-behavior 'delete)
-
-     (setq mu4e-view-show-images t)
-     (when (fboundp 'imagemagick-register-types)
-       (imagemagick-register-types))
-
-     (setq message-signature ""
-           mu4e-compose-signature-auto-include nil)
-
-   #+END_SRC
-
-   #+name: mail
-   #+BEGIN_SRC emacs-lisp
-     (setq mu4e-drafts-folder "/[Gmail].Drafts")
-     (setq mu4e-sent-folder   "/[Gmail].Sent Mail")
-     (setq mu4e-trash-folder  "/[Gmail].Trash")
-
-     (setq mu4e-maildir-shortcuts
-           '( ("/INBOX"   . ?i)
-              ("/[Gmail].Sent"    . ?s)
-              ("/[Gmail].Trash"   . ?t)
-              ("/[Gmail].All Mail" . ?a)))
-
-     (setq message-send-mail-function 'smtpmail-send-it
-           smtpmail-stream-type 'starttls
-           smtpmail-default-smtp-server "smtp.gmail.com"
-           smtpmail-smtp-server "smtp.gmail.com"
-           smtpmail-smtp-service 587)
-
-     (setq user-mail-address "isaachodes@gmail.com"
-           user-full-name  "Isaac Hodes")
-
-     ;; don't kqeep message buffers around
-     (setq message-kill-buffer-on-exit t)
-   #+END_SRC
 ** Python settings
 
 This lets us use the iPython kernel as the inferior Python process.
