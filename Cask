@@ -44,6 +44,8 @@
 (depends-on "scss-mode")
 (depends-on "markdown-mode")
 (depends-on "flx-ido")
+(depends-on "ido-ubiquitous")
+(depends-on "ido-vertical-mode")
 (depends-on "projectile")
 (depends-on "undo-tree")
 (depends-on "company")
