@@ -57,8 +57,6 @@
   #+BEGIN_SRC emacs-lisp
     (global-undo-tree-mode)
     (column-number-mode t)
-    (ido-mode t)
-    (setq ido-enable-flex-matching t)
     (setq kill-ring-max 500)
     (setq js-indent-level 2)
     (setq tramp-default-method "ssh")
@@ -98,130 +96,166 @@
 
   #+name: modes
   #+BEGIN_SRC emacs-lisp
-        (use-package flycheck
-          :init
-          (progn
-            (add-hook 'after-init-hook 'global-flycheck-mode)
-            (flycheck-define-checker jsxhint-checker
-              "A JSX syntax and style checker based on JSXHint."
-              :command ("jsxhint" (config-file "--config=" jshint-configuration-path) source)
-              :error-patterns ((error line-start (1+ nonl) ": line " line ", col " column ", " (message) line-end))
-              :modes (js-mode))
-            (setq auto-mode-alist (remove (rassoc 'html-mode auto-mode-alist)
-                                          auto-mode-alist))))
+    (use-package ido
+      :init
+      (ido-mode 1)
+      (setq ido-enable-flex-matching t
+          ido-everywhere t
+          ido-use-faces nil ;; disable ido faces to see flx highlights.
+          ido-create-new-buffer 'always
+          ido-use-filename-at-point 'guess
+          ido-enable-flex-matching t)
+      (use-package ido-ubiquitous
+        :ensure ido-ubiquitous
+        :init
+        (ido-ubiquitous-mode 1))
+      (use-package ido-vertical-mode
+        :ensure ido-vertical-mode
+        :init
+        (ido-vertical-mode))
+      (use-package flx-ido
+        :ensure flx-ido
+        :init
+        (setq flx-ido-threshold 1000)
+        (flx-ido-mode 1))
+      :bind
+      ("<f4>" . ido-recentf-open)
+      ("C-x C-d" . ido-dired))
 
-        (use-package ace-jump-mode
-          :bind ("M-SPC" . ace-jump-mode))
+    (use-package smex
+      :ensure smex
+      :bind ("M-x" . smex)
+      :init
+      (unbind-key "M-x")
+      (unbind-key "<menu>")
+      (smex-initialize))
 
-        (use-package paredit
-          :init
-          (dolist (x '(scheme emacs-lisp lisp clojure))
-            (add-hook
-             (intern (concat (symbol-name x) "-mode-hook")) 'paredit-mode)))
+    (use-package fycheck
+      :init
+      (add-hook 'after-init-hook 'global-flycheck-mode)
+      (flycheck-define-checker jsxhint-checker
+        "A JSX syntax and style checker based on JSXHint."
+        :command ("jsxhint" (config-file "--config=" jshint-configuration-path) source)
+        :error-patterns ((error line-start (1+ nonl)
+                                ": line " line
+                                ", col " column
+                                ", " (message)
+                                line-end))
+        :modes (js-mode))
+      (setq auto-mode-alist (remove (rassoc 'html-mode auto-mode-alist)
+                                    auto-mode-alist)))
 
-        (use-package web-mode
-          :mode
-          (("\\.phtml\\'" . web-mode)
-           ("\\.jsx\\'" . web-mode)
-           ("\\.tpl\\.php\\'" . web-mode)
-           ("\\.jsp\\'" . web-mode)
-           ("\\.as[cp]x\\'" . web-mode)
-           ("\\.erb\\'" . web-mode)
-           ("\\.ejs\\'" . web-mode)
-           ("\\.mustache\\'" . web-mode)
-           ("\\.djhtml\\'" . web-mode)
-           ("\\.html?\\'" . web-mode)
-           ("\\.css?\\'" . web-mode))
-          :init
-          (progn
-            (setq web-mode-markup-indent-offset 2)
-            (setq web-mode-css-indent-offset 2)
-            (setq web-mode-engines-alist '(("erb" . "\\.ejs\\'"))))
-          :bind ("C-c /" . web-mode-element-close))
+    (use-package ace-jump-mode
+      :bind ("M-SPC" . ace-jump-mode))
 
-        (use-package smart-mode-line
-          :init
-          (progn
-            (setq sml/no-confirm-load-theme t)
-            (sml/setup)
-            (sml/apply-theme 'dark)
-            (add-to-list 'sml/replacer-regexp-list '("^~/workspace/" ":W:") t)
-            (add-to-list 'sml/hidden-modes " Undo-Tree")
-            (add-to-list 'sml/hidden-modes " MRev")
-            (add-to-list 'sml/hidden-modes " Paredit")
-            (add-to-list 'sml/hidden-modes " hl-s")
-            (add-to-list 'sml/hidden-modes " Helm")
-            (add-to-list 'sml/hidden-modes " company")
-            (add-to-list 'sml/hidden-modes " yas")))
+    (use-package paredit
+      :init
+      (dolist (x '(scheme emacs-lisp lisp clojure))
+        (add-hook
+         (intern (concat (symbol-name x) "-mode-hook")) 'paredit-mode)))
 
-        (use-package company
-          :init
-          (progn
-            (add-hook 'after-init-hook 'global-company-mode)
-            (add-hook 'after-init-hook
-                      (lambda () (add-to-list 'company-backends 'company-anaconda)))))
+    (use-package web-mode
+      :mode (("\\.phtml\\'" . web-mode)
+             ("\\.jsx\\'" . web-mode)
+             ("\\.tpl\\.php\\'" . web-mode)
+             ("\\.jsp\\'" . web-mode)
+             ("\\.as[cp]x\\'" . web-mode)
+             ("\\.erb\\'" . web-mode)
+             ("\\.ejs\\'" . web-mode)
+             ("\\.mustache\\'" . web-mode)
+             ("\\.djhtml\\'" . web-mode)
+             ("\\.html?\\'" . web-mode)
+             ("\\.css?\\'" . web-mode))
+      :config
+      (setq web-mode-markup-indent-offset 2
+            web-mode-css-indent-offset 2
+            web-mode-engines-alist '(("erb" . "\\.ejs\\'")))
 
-        (use-package ag
-          :bind ("<f2>" . ag-project)
-          :init
-          (setq ag-highlight-search t))
+      (bind-keys :map web-mode-map ("C-c /" . web-mode-element-close)))
 
-        (use-package recentf
-          :init
-          (progn
-            (recentf-mode t)
-            (setq recentf-max-saved-items 50)))
+    (use-package smart-mode-line
+      :init
+      (setq sml/no-confirm-load-theme t)
+      (sml/setup)
+      (sml/apply-theme 'dark)
+      (add-to-list 'sml/replacer-regexp-list '("^~/workspace/" ":W:") t)
+      (add-to-list 'sml/hidden-modes " Undo-Tree")
+      (add-to-list 'sml/hidden-modes " MRev")
+      (add-to-list 'sml/hidden-modes " Paredit")
+      (add-to-list 'sml/hidden-modes " hl-s")
+      (add-to-list 'sml/hidden-modes " Helm")
+      (add-to-list 'sml/hidden-modes " company")
+      (add-to-list 'sml/hidden-modes " yas"))
 
-        (use-package expand-region
-          :bind (("s-=" . er/expand-region)
-                 ("s--" . er/contract-region)))
+    (use-package company
+      :init
+      (global-company-mode t)
+      (add-to-list 'company-backends 'company-anaconda))
 
-        (use-package visual-regexp
-          :bind (("C-c q" . vr/query-replace)
-                 ("C-c r" . vr/replace)
-                 ("s-c" . vr/mc-mark)))
+    (use-package ag
+      :bind ("<f2>" . ag-project)
+      :init (setq ag-highlight-search t))
 
-        (use-package browse-kill-ring
-          :bind ("C-M-y" . browse-kill-ring))
+    (use-package recentf
+      :init
+      (recentf-mode t)
+      (setq recentf-max-saved-items 50))
 
-        (use-package undo-tree-mode
-          :bind (("C-x C-u" . undo-tree-undo)
-                 ("C-x C-r" . undo-tree-redo)))
+    (use-package expand-region
+      :bind (("s-=" . er/expand-region)
+             ("s--" . er/contract-region)))
 
-        (use-package haskell-mode
-          :init
-          (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation))
+    (use-package visual-regexp
+      :bind (("C-c q" . vr/query-replace)
+             ("C-c r" . vr/replace)
+             ("s-c" . vr/mc-mark)))
 
-        (defun endless/load-gh-pulls-mode ()
-          "Start `magit-gh-pulls-mode' only after a manual request."
-          (interactive)
-          (require 'magit-gh-pulls)
-          (add-hook 'magit-mode-hook 'turn-on-magit-gh-pulls)
-          (magit-gh-pulls-mode 1)
-          (magit-gh-pulls-reload))
+    (use-package browse-kill-ring
+      :bind ("C-M-y" . browse-kill-ring))
 
-        (use-package magit
-          :bind ("C-x g" . magit-status)
-          :config (define-key magit-mode-map "#gg"
-                     'endless/load-gh-pulls-mode))
+    (use-package undo-tree-mode
+      :bind (("C-x C-u" . undo-tree-undo)
+             ("C-x C-r" . undo-tree-redo)))
 
-        (use-package projectile
-          :bind ("s-p" . projectile-commander)
-          :init
-          (progn
-            (projectile-global-mode)
-            (setq projectile-mode-line
-                  '(:eval (format " @:%s" (projectile-project-name))))))
+    (use-package haskell-mode
+      :init
+      (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation))
 
-        (use-package rainbow-delimiters
-          :init
-          (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
+    (use-package magit
+      :bind ("C-x g" . magit-status)
+      :config
+      (defadvice magit-status (around magit-fullscreen activate)
+        (window-configuration-to-register :magit-fullscreen)
+        ad-do-it
+        (delete-other-windows))
 
-        (use-package yasnippet
-          :init
-          (progn
-            (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
-            (yas-global-mode 1)))
+      (defun magit-quit-session ()
+        "Restores the previous window configuration and kills the magit buffer"
+        (interactive)
+        (kill-buffer)
+        (jump-to-register :magit-fullscreen))
+
+      (bind-keys :map magit-status-mode-map
+                 ("q" . magit-quit-session)))
+
+    (use-package projectile
+      :bind ("s-p" . projectile-commander)
+      :init
+      (progn
+        (projectile-global-mode)
+        (setq projectile-mode-line
+              '(:eval (format " @:%s" (projectile-project-name))))))
+
+    (use-package rainbow-delimiters
+      :init
+      (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
+
+    (use-package yasnippet
+      :init
+      (progn
+        (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
+        (yas-global-mode 1)))
+
   #+END_SRC
 
   Finally we quick'n'dirtily set some little text modes.
