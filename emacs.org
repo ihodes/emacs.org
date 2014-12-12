@@ -365,9 +365,10 @@ Clojure-mode is useful for ~.edn~, ~.cljs~, and ~.cljx~ files as well.
 
   #+name: modes
   #+BEGIN_SRC emacs-lisp
-    (nconc auto-mode-alist '(("\\.edn\\'" . clojure-mode)
-                             ("\\.cljs\\'" . clojure-mode)
-                             ("\\.cljx\\'" . clojure-mode)))
+    (dolist (mm '(("\\.edn\\'" . clojure-mode)
+                  ("\\.cljs\\'" . clojure-mode)
+                  ("\\.cljx\\'" . clojure-mode)))
+      (add-to-list 'auto-mode-alist mm))
   #+END_SRC
 
 We make the [[https://github.com/clojure-emacs/cider][Cider]] (Clojure IDE) experience a bit better.
@@ -575,6 +576,18 @@ those here.
       (magit-gh-pulls-mode 1)
       (magit-gh-pulls-reload))
 
+    (defun revert-this-buffer ()
+      (interactive)
+      (revert-buffer nil t t)
+      (message (concat "Reverted buffer " (buffer-name))))
+
+    (defun ido-recentf-open ()
+      "Use `ido-completing-read' to \\[find-file] a recent file"
+      (interactive)
+      (if (find-file (ido-completing-read "Find recent file: " recentf-list))
+          (message "Opening file...")
+        (message "Aborting")))
+
   #+END_SRC
 * Bindings
 
@@ -584,7 +597,6 @@ those here.
   #+BEGIN_SRC emacs-lisp
     (bind-keys ("<f1>" . eshell)
                ("<f3>" . occur)
-               ("<f5>" . highlight-symbol-at-point)
                ("<f6>" . revert-this-buffer)
                ("C-c M-w" . whitespace-mode)
                ("M-j" . (lambda () (interactive) (join-line -1)))
@@ -593,7 +605,8 @@ those here.
                ("C-x w" . delete-trailing-whitespace)
                ("C-x C-d" . ido-dired)
                ("C-c C-e" . eval-buffer)
-               ("C-x C-b" . 'ibuffer)
+               ("C-x C-b" . ibuffer)
+               ("C-x C-l" . goto-line)
                ("C-s" . isearch-forward-regexp)
                ("C-r" . isearch-backward-regexp))
 
@@ -614,18 +627,6 @@ those here.
              (interactive)
              (insert "console.log();")
              (backward-char 2)))))
-
-    (defun revert-this-buffer ()
-      (interactive)
-      (revert-buffer nil t t)
-      (message (concat "Reverted buffer " (buffer-name))))
-
-    (defun ido-recentf-open ()
-      "Use `ido-completing-read' to \\[find-file] a recent file"
-      (interactive)
-      (if (find-file (ido-completing-read "Find recent file: " recentf-list))
-          (message "Opening file...")
-        (message "Aborting")))
   #+END_SRC
 * Projects
 
