@@ -29,6 +29,7 @@
 (depends-on "haskell-mode")
 (depends-on "ace-jump-mode")
 (depends-on "tuareg")
+(depends-on "utop")
 (depends-on "highlight-symbol")
 (depends-on "rainbow-delimiters")
 (depends-on "magit")
@@ -64,3 +65,4 @@
 (depends-on "web-mode")
 (depends-on "scala-mode2")
 (depends-on "ensime")
+(depends-on "window-numbering")

@@ -122,6 +122,26 @@
       ("<f4>" . ido-recentf-open)
       ("C-x C-d" . ido-dired))
 
+    ;;(use-package window-numbering)
+
+    (use-package tuareg
+      :init
+      ;; Setup environment variables using opam
+      (dolist (var (car (read-from-string (shell-command-to-string "opam config env --sexp"))))
+        (setenv (car var) (cadr var)))
+      ;; Update the emacs path
+      (setq exec-path (append (parse-colon-path (getenv "PATH"))
+                              (list exec-directory)))
+      ;; Update the emacs load path
+      (add-to-list 'load-path (expand-file-name "../../share/emacs/site-lisp"
+                                                (getenv "OCAML_TOPLEVEL_PATH")))
+      ;; Automatically load utop.el
+      (autoload 'utop "utop" "Toplevel for OCaml" t)
+
+      (autoload 'utop-setup-ocaml-buffer "utop" "Toplevel for OCaml" t)
+      (add-hook 'tuareg-mode-hook 'utop-setup-ocaml-buffer)
+      (add-hook 'typerex-mode-hook 'utop-setup-ocaml-buffer))
+
     (use-package smex
       :ensure smex
       :bind ("M-x" . smex)
@@ -224,19 +244,12 @@
     (use-package magit
       :bind ("C-x g" . magit-status)
       :config
-      (defadvice magit-status (around magit-fullscreen activate)
-        (window-configuration-to-register :magit-fullscreen)
-        ad-do-it
-        (delete-other-windows))
-
-      (defun magit-quit-session ()
-        "Restores the previous window configuration and kills the magit buffer"
-        (interactive)
-        (kill-buffer)
-        (jump-to-register :magit-fullscreen))
-
-      (bind-keys :map magit-status-mode-map
-                 ("q" . magit-quit-session)))
+      ;; https://github.com/magit/magit/issues/1953
+      (setq magit-restore-window-configuration t) ;; the default
+      (setq magit-status-buffer-switch-function
+        (lambda (buffer) ; there might already be an Emacs function which does this
+          (pop-to-buffer buffer)
+          (delete-other-windows))))
 
     (use-package projectile
       :bind ("s-p" . projectile-commander)
@@ -510,6 +523,13 @@ those here.
   A bunch of little utility functions created here and elsewhere.
   #+name: functions
   #+BEGIN_SRC emacs-lisp
+    (defun ido-recentf-open ()
+      "Use `ido-completing-read' to \\[find-file] a recent file"
+      (interactive)
+      (if (find-file (ido-completing-read "Find recent file: " recentf-list))
+          (message "Opening file...")
+        (message "Aborting")))
+
     (defun clear-shell-buffer ()
       "Clear the current buffer"
       (interactive)
@@ -580,13 +600,6 @@ those here.
       (interactive)
       (revert-buffer nil t t)
       (message (concat "Reverted buffer " (buffer-name))))
-
-    (defun ido-recentf-open ()
-      "Use `ido-completing-read' to \\[find-file] a recent file"
-      (interactive)
-      (if (find-file (ido-completing-read "Find recent file: " recentf-list))
-          (message "Opening file...")
-        (message "Aborting")))
 
   #+END_SRC
 * Bindings
@@ -661,6 +674,26 @@ projects I frequently work on.
       (interactive)
       (dolist (start '(cycledash:start-server cycledash:start-worker cycledash:start-gulp))
         (funcall start)))
+
+    (defun cycledash:python-tests ()
+      "Run the Python tests"
+      (interactive)
+      (async-shell-command "cd ~/workspace/cycledash/ && source venv/bin/activate && source ENV.sh && nosetests tests/python"
+                           "*CycleDash: python nosetests*"))
+
+    (defun rgc:start-server ()
+      "Start the RGC Harvest server."
+      (interactive)
+      (async-shell-command "cd ~/workspace/rgc/rgc-site/ && source venv/bin/activate && ./bin/manage.py runserver 8080"
+                           "*Harvest: runserver 8080*"))
+
+    (defun healthtracker:start-server ()
+      "Start the Healthtracker server."
+      (interactive)
+      (async-shell-command "cd ~/workspace/healthtracker/ && source venv/bin/activate && source env.sh && python run.py"
+                           "*Healthtracker: run.py 5050*"))
+
+
   #+END_SRC
 ** VCF.js
   Found on [[https://github.com/ihodes/vcf.js][GitHub]].
@@ -704,8 +737,8 @@ projects I frequently work on.
     <<look-and-feel>>
     <<packages>>
     <<modes>>
-    <<defaults>>
     <<functions>>
+    <<defaults>>
     <<gittit>>
     <<bindings>>
     <<projects>>
