@@ -28,6 +28,7 @@
 (depends-on "yasnippet")
 (depends-on "haskell-mode")
 (depends-on "ace-jump-mode")
+(depends-on "ace-window")
 (depends-on "tuareg")
 (depends-on "utop")
 (depends-on "highlight-symbol")

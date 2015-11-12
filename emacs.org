@@ -6,7 +6,7 @@
   to learn more about ~org-mode~ and to better organize my configuration.
 
   So far I am very impressed with how it feels to write code like this. Logical
-  and explicitly-named code-folding, with first class comments and
+  and explicitly-named code sections, with first class comments and
   hyperlinks, seems disproportionately useful and powerful.
 
 * Look & Feel
@@ -80,7 +80,7 @@
                   backup-directory-alist `(("." . ,(concat user-emacs-directory
                                                    "backups"))))
   #+END_SRC
-* Modes
+* COMMENT Modes
 
   Here we activate modes and do a lot of stuff which should be split out into
   smaller code blocks.
@@ -100,11 +100,11 @@
       :init
       (ido-mode 1)
       (setq ido-enable-flex-matching t
-          ido-everywhere t
-          ido-use-faces nil ;; disable ido faces to see flx highlights.
-          ido-create-new-buffer 'always
-          ido-use-filename-at-point 'guess
-          ido-enable-flex-matching t)
+            ido-everywhere t
+            ido-use-faces nil ;; disable ido faces to see flx highlights.
+            ido-create-new-buffer 'always
+            ido-use-filename-at-point 'guess
+            ido-enable-flex-matching t)
       (use-package ido-ubiquitous
         :ensure ido-ubiquitous
         :init
@@ -122,7 +122,7 @@
       ("<f4>" . ido-recentf-open)
       ("C-x C-d" . ido-dired))
 
-    ;;(use-package window-numbering)
+        ;;(use-package window-numbering)
 
     (use-package tuareg
       :init
@@ -137,10 +137,37 @@
                                                 (getenv "OCAML_TOPLEVEL_PATH")))
       ;; Automatically load utop.el
       (autoload 'utop "utop" "Toplevel for OCaml" t)
-
       (autoload 'utop-setup-ocaml-buffer "utop" "Toplevel for OCaml" t)
       (add-hook 'tuareg-mode-hook 'utop-setup-ocaml-buffer)
       (add-hook 'typerex-mode-hook 'utop-setup-ocaml-buffer))
+
+    (add-hook 'tuareg-mode-hook 'merlin-mode)
+    (setq merlin-use-auto-complete-mode 'easy)
+    (setq merlin-command 'opam)
+    ;;(add-to-list 'company-backends 'merlin-company-backend)
+    (add-hook 'merlin-mode-hook 'company-mode)
+
+    (setq opam-share
+          (substring
+           (shell-command-to-string "opam config var share 2> /dev/null") 0 -1))
+    (add-to-list 'load-path (concat opam-share "/emacs/site-lisp"))
+    (setq ocp-indent-config "strict_with=always,with=0,strict_comments=false")
+    (require 'ocp-indent)
+
+
+    (defun ihodes/send-to-utop ()
+      "Send selected text to *utop*."
+      (interactive)
+      (progn
+        (let ((text (buffer-substring-no-properties
+                     (region-beginning) (region-end))))
+          (switch-to-buffer-other-window "*utop*")
+          (goto-char (point-max))
+          (insert (concat text " ;;")))))
+
+    (use-package merlin
+      :bind ("C-c s" . ihodes/send-to-utop)
+      :init (unbind-key "C-c e"))
 
     (use-package smex
       :ensure smex
@@ -167,6 +194,9 @@
 
     (use-package ace-jump-mode
       :bind ("M-SPC" . ace-jump-mode))
+
+    (use-package ace-window
+      :bind ("M-p" . ace-window))
 
     (use-package paredit
       :init
@@ -247,9 +277,9 @@
       ;; https://github.com/magit/magit/issues/1953
       (setq magit-restore-window-configuration t) ;; the default
       (setq magit-status-buffer-switch-function
-        (lambda (buffer) ; there might already be an Emacs function which does this
-          (pop-to-buffer buffer)
-          (delete-other-windows))))
+            (lambda (buffer) ; there might already be an Emacs function which does this
+              (pop-to-buffer buffer)
+              (delete-other-windows))))
 
     (use-package projectile
       :bind ("s-p" . projectile-commander)
@@ -266,8 +296,8 @@
     (use-package yasnippet
       :init
       (progn
-        (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
-        (yas-global-mode 1)))
+            (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
+            (yas-global-mode 1)))
 
   #+END_SRC
 
@@ -442,12 +472,18 @@ those here.
                  (package . font-lock-preprocessor-face)))))
    #+END_SRC
 ** Coq
-   #+name: modes
+   #+name: coq-mode
    #+BEGIN_SRC emacs-lisp
      (load-file "/usr/local/share/emacs/site-lisp/ProofGeneral/generic/proof-site.el")
      (autoload 'coq-mode "coq" "Major mode for editing Coq vernacular." t)
      (setq auto-mode-alist (cons '("\\.v$" . coq-mode) auto-mode-alist))
      (eval-after-load 'coq-mode '(define-key coq-mode-map (kbd "C-c C-.") 'proof-goto-point))
+   #+END_SRC
+** Misc
+   #+name: modes
+   #+BEGIN_SRC emacs-lisp
+     ;; annoying autocompile for scss is turned off
+     (setq scss-compile-at-save nil)
    #+END_SRC
 * Gittit
   ~gittit~ is a little library I wrote to connect local files to GitHub repos.
@@ -737,6 +773,7 @@ projects I frequently work on.
     <<look-and-feel>>
     <<packages>>
     <<modes>>
+    ;;;; <<coq-mode>>
     <<functions>>
     <<defaults>>
     <<gittit>>
