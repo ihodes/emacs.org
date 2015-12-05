@@ -2,12 +2,7 @@
 
 * Prelude
 
-  This is the beginning of a "literate" emacs configuration. This is both a way
-  to learn more about ~org-mode~ and to better organize my configuration.
-
-  So far I am very impressed with how it feels to write code like this. Logical
-  and explicitly-named code sections, with first class comments and
-  hyperlinks, seems disproportionately useful and powerful.
+  This is the beginning of a literate emacs configuration.
 
 * Look & Feel
 
@@ -55,7 +50,6 @@
 
   #+name: defaults
   #+BEGIN_SRC emacs-lisp
-    (global-undo-tree-mode)
     (column-number-mode t)
     (setq kill-ring-max 500)
     (setq js-indent-level 2)
@@ -78,9 +72,9 @@
                   enable-recursive-minibuffers t
                   apropos-do-all t
                   backup-directory-alist `(("." . ,(concat user-emacs-directory
-                                                   "backups"))))
+                                                           "backups"))))
   #+END_SRC
-* COMMENT Modes
+* Modes
 
   Here we activate modes and do a lot of stuff which should be split out into
   smaller code blocks.
@@ -99,96 +93,95 @@
     (use-package ido
       :init
       (ido-mode 1)
+      (use-package ido-ubiquitous
+        :ensure ido-ubiquitous
+        :init
+        (ido-ubiquitous-mode 1))
+
+      (use-package ido-vertical-mode
+        :ensure ido-vertical-mode
+        :init (ido-vertical-mode))
+
+      (use-package flx-ido
+        :ensure flx-ido
+        :init
+        (setq flx-ido-threshold 1000)
+        (flx-ido-mode 1))
       (setq ido-enable-flex-matching t
             ido-everywhere t
             ido-use-faces nil ;; disable ido faces to see flx highlights.
             ido-create-new-buffer 'always
             ido-use-filename-at-point 'guess
             ido-enable-flex-matching t)
-      (use-package ido-ubiquitous
-        :ensure ido-ubiquitous
-        :init
-        (ido-ubiquitous-mode 1))
-      (use-package ido-vertical-mode
-        :ensure ido-vertical-mode
-        :init
-        (ido-vertical-mode))
-      (use-package flx-ido
-        :ensure flx-ido
-        :init
-        (setq flx-ido-threshold 1000)
-        (flx-ido-mode 1))
       :bind
       ("<f4>" . ido-recentf-open)
       ("C-x C-d" . ido-dired))
 
-        ;;(use-package window-numbering)
+    (defun ihodes/set-exec-path-from-shell-PATH ()
+          "Set up Emacs' `exec-path' and PATH environment variable to match that used by the user's shell.
+
+        This is particularly useful under Mac OSX, where GUI apps are not started from a shell.
+
+        from http://stackoverflow.com/questions/8606954/path-and-exec-path-set-but-emacs-does-not-find-executable"
+          (interactive)
+          (let ((path-from-shell (replace-regexp-in-string "[ \t\n]*$" "" (shell-command-to-string "$SHELL --login -i -c 'echo $PATH'"))))
+            (setenv "PATH" path-from-shell)
+            (setq exec-path (split-string path-from-shell path-separator))))
 
     (use-package tuareg
       :init
       ;; Setup environment variables using opam
+      (ihodes/set-exec-path-from-shell-PATH)
       (dolist (var (car (read-from-string (shell-command-to-string "opam config env --sexp"))))
         (setenv (car var) (cadr var)))
       ;; Update the emacs path
       (setq exec-path (append (parse-colon-path (getenv "PATH"))
                               (list exec-directory)))
-      ;; Update the emacs load path
-      (add-to-list 'load-path (expand-file-name "../../share/emacs/site-lisp"
-                                                (getenv "OCAML_TOPLEVEL_PATH")))
       ;; Automatically load utop.el
       (autoload 'utop "utop" "Toplevel for OCaml" t)
       (autoload 'utop-setup-ocaml-buffer "utop" "Toplevel for OCaml" t)
       (add-hook 'tuareg-mode-hook 'utop-setup-ocaml-buffer)
-      (add-hook 'typerex-mode-hook 'utop-setup-ocaml-buffer))
+      (add-hook 'typerex-mode-hook 'utop-setup-ocaml-buffer)
+      (add-hook 'tuareg-mode-hook 'merlin-mode)
+      (add-hook 'tuareg-mode-hook 'ocp-setup-indent)
+      (setq merlin-use-auto-complete-mode 'easy)
+      (setq merlin-command 'opam)
+      ;;(add-to-list 'company-backends 'merlin-company-backend)
+      (add-hook 'merlin-mode-hook 'company-mode)
 
-    (add-hook 'tuareg-mode-hook 'merlin-mode)
-    (setq merlin-use-auto-complete-mode 'easy)
-    (setq merlin-command 'opam)
-    ;;(add-to-list 'company-backends 'merlin-company-backend)
-    (add-hook 'merlin-mode-hook 'company-mode)
+      (setq opam-share
+            (substring
+             (shell-command-to-string "opam config var share 2> /dev/null") 0 -1))
+      (add-to-list 'load-path (concat opam-share "/emacs/site-lisp"))
+      (setq ocp-indent-config "strict_with=always,with=0,strict_comments=false")
+      (require 'ocp-indent))
 
-    (setq opam-share
-          (substring
-           (shell-command-to-string "opam config var share 2> /dev/null") 0 -1))
-    (add-to-list 'load-path (concat opam-share "/emacs/site-lisp"))
-    (setq ocp-indent-config "strict_with=always,with=0,strict_comments=false")
-    (require 'ocp-indent)
+        (defun ihodes/send-to-utop ()
+          "Send selected text to *utop*."
+          (interactive)
+          (progn
+            (let ((text (buffer-substring-no-properties
+                         (region-beginning) (region-end))))
+              (switch-to-buffer-other-window "*utop*")
+              (goto-char (point-max))
+              (insert (concat text " ;;")))))
 
+        (use-package merlin
+          :bind ("C-c s" . ihodes/send-to-utop)
+          :init (unbind-key "C-c e"))
 
-    (defun ihodes/send-to-utop ()
-      "Send selected text to *utop*."
-      (interactive)
-      (progn
-        (let ((text (buffer-substring-no-properties
-                     (region-beginning) (region-end))))
-          (switch-to-buffer-other-window "*utop*")
-          (goto-char (point-max))
-          (insert (concat text " ;;")))))
+        (use-package smex
+          :ensure smex
+          :bind ("M-x" . smex)
+          :init
+          (unbind-key "M-x")
+          (unbind-key "<menu>")
+          (smex-initialize))
 
-    (use-package merlin
-      :bind ("C-c s" . ihodes/send-to-utop)
-      :init (unbind-key "C-c e"))
-
-    (use-package smex
-      :ensure smex
-      :bind ("M-x" . smex)
-      :init
-      (unbind-key "M-x")
-      (unbind-key "<menu>")
-      (smex-initialize))
-
-    (use-package fycheck
+    (use-package flycheck
+      :diminish flycheck-mode
       :init
       (add-hook 'after-init-hook 'global-flycheck-mode)
-      (flycheck-define-checker jsxhint-checker
-        "A JSX syntax and style checker based on JSXHint."
-        :command ("jsxhint" (config-file "--config=" jshint-configuration-path) source)
-        :error-patterns ((error line-start (1+ nonl)
-                                ": line " line
-                                ", col " column
-                                ", " (message)
-                                line-end))
-        :modes (js-mode))
       (setq auto-mode-alist (remove (rassoc 'html-mode auto-mode-alist)
                                     auto-mode-alist)))
 
@@ -246,11 +239,6 @@
       :bind ("<f2>" . ag-project)
       :init (setq ag-highlight-search t))
 
-    (use-package recentf
-      :init
-      (recentf-mode t)
-      (setq recentf-max-saved-items 50))
-
     (use-package expand-region
       :bind (("s-=" . er/expand-region)
              ("s--" . er/contract-region)))
@@ -264,10 +252,12 @@
       :bind ("C-M-y" . browse-kill-ring))
 
     (use-package undo-tree-mode
+      :init (global-undo-tree-mode)
       :bind (("C-x C-u" . undo-tree-undo)
              ("C-x C-r" . undo-tree-redo)))
 
     (use-package haskell-mode
+      :mode "\\.hs\\'"
       :init
       (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation))
 
@@ -277,7 +267,7 @@
       ;; https://github.com/magit/magit/issues/1953
       (setq magit-restore-window-configuration t) ;; the default
       (setq magit-status-buffer-switch-function
-            (lambda (buffer) ; there might already be an Emacs function which does this
+            (lambda (buffer)
               (pop-to-buffer buffer)
               (delete-other-windows))))
 
@@ -293,11 +283,11 @@
       :init
       (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
 
-    (use-package yasnippet
-      :init
-      (progn
-            (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
-            (yas-global-mode 1)))
+    ;; (use-package yasnippet
+    ;;   :init
+    ;;   (progn
+    ;;     (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
+    ;;     (yas-global-mode 1)))
 
   #+END_SRC
 
@@ -556,6 +546,7 @@ those here.
 
   Under the [[http://www.apache.org/licenses/LICENSE-2.0.html][Apache 2.0 License]].
 * Misc. Functions
+
   A bunch of little utility functions created here and elsewhere.
   #+name: functions
   #+BEGIN_SRC emacs-lisp
