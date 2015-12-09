@@ -271,6 +271,10 @@
               (pop-to-buffer buffer)
               (delete-other-windows))))
 
+    (use-package fullframe
+      :init
+      (fullframe magit-status magit-mode-quit-window))
+
     (use-package projectile
       :bind ("s-p" . projectile-commander)
       :init
@@ -285,9 +289,8 @@
 
     ;; (use-package yasnippet
     ;;   :init
-    ;;   (progn
     ;;     (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
-    ;;     (yas-global-mode 1)))
+    ;;     (yas-global-mode 1))
 
   #+END_SRC
 
