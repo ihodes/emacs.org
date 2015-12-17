@@ -68,3 +68,4 @@
 (depends-on "ensime")
 (depends-on "window-numbering")
 (depends-on "fullframe")
+(depends-on "merlin")
