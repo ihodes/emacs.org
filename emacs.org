@@ -11,7 +11,6 @@
   #+name: look-and-feel
   #+BEGIN_SRC emacs-lisp
     (load-theme 'tango-dark)
-
     (blink-cursor-mode 0)
     (setq initial-scratch-message "")
     (setq inhibit-startup-message t)
@@ -19,7 +18,6 @@
     (menu-bar-mode -1)
     (tool-bar-mode -1)
     (scroll-bar-mode -1)
-
     (show-paren-mode 1)
     (set-face-attribute 'mode-line nil
                         :foreground "gray100" :background "gray10"
@@ -32,16 +30,31 @@
   #+END_SRC
 * Packages
 
-  Configure and load ~cask.el~, initializing the packages it manages [[file:Cask][Cask]].
+  Load up *package* & ensure that *use-package* will install all other packages.
 
   #+name: packages
   #+BEGIN_SRC emacs-lisp
-    (require 'cask "/usr/local/Cellar/cask/0.7.2/cask.el")
-    (cask-initialize)
+    (require 'package)
+    (package-initialize)
+    (setq package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
+                             ("marmalade" . "https://marmalade-repo.org/packages/")
+                             ("melpa" . "https://melpa.org/packages/")))
   #+END_SRC
 
-  ([[https://github.com/cask/cask][Cask]] can be installed with ~brew install cask~, and the packages managed by
-  the Cask file can be installed with ~cask install~.)
+  We load and configure all packages with the glorious [[https://github.com/jwiegley/use-package][use-package]] mode.
+
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (require 'use-package)
+  #+END_SRC
+
+  This will ensure all our packages are installed (that are wrapped in
+  use-package). We must first manually install use-package.
+
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (setq use-package-always-ensure t)
+  #+END_SRC
 
 * Defaults
 
@@ -55,16 +68,11 @@
     (setq js-indent-level 2)
     (setq tramp-default-method "ssh")
     (setq auto-save-default nil)
-
-    (windmove-default-keybindings)
-
     (require 'uniquify)
     (setq-default uniquify-buffer-name-style 'forward)
-
     (require 'saveplace)
     (setq-default save-place t
                   save-place-file (concat user-emacs-directory "places"))
-
     (setq-default indent-tabs-mode nil
                   fill-column 80
                   show-trailing-whitespace t
@@ -79,15 +87,9 @@
   Here we activate modes and do a lot of stuff which should be split out into
   smaller code blocks.
 
-  We load and configure all packages with the glorious [[https://github.com/jwiegley/use-package][use-package]] mode.
-
-  #+name: modes
-  #+BEGIN_SRC emacs-lisp
-    (require 'use-package)
-  #+END_SRC
-
   And configure most of them...
 
+** Main
   #+name: modes
   #+BEGIN_SRC emacs-lisp
     (use-package ido
@@ -120,15 +122,15 @@
       ("C-x C-d" . ido-dired))
 
     (defun ihodes/set-exec-path-from-shell-PATH ()
-          "Set up Emacs' `exec-path' and PATH environment variable to match that used by the user's shell.
+      "Set up Emacs' `exec-path' and PATH environment variable to match that used by the user's shell.
 
-        This is particularly useful under Mac OSX, where GUI apps are not started from a shell.
+    This is particularly useful under Mac OSX, where GUI apps are not started from a shell.
 
-        from http://stackoverflow.com/questions/8606954/path-and-exec-path-set-but-emacs-does-not-find-executable"
-          (interactive)
-          (let ((path-from-shell (replace-regexp-in-string "[ \t\n]*$" "" (shell-command-to-string "$SHELL --login -i -c 'echo $PATH'"))))
-            (setenv "PATH" path-from-shell)
-            (setq exec-path (split-string path-from-shell path-separator))))
+    from http://stackoverflow.com/questions/8606954/path-and-exec-path-set-but-emacs-does-not-find-executable"
+      (interactive)
+      (let ((path-from-shell (replace-regexp-in-string "[ \t\n]*$" "" (shell-command-to-string "$SHELL --login -i -c 'echo $PATH'"))))
+        (setenv "PATH" path-from-shell)
+        (setq exec-path (split-string path-from-shell path-separator))))
 
     (use-package tuareg
       :init
@@ -158,27 +160,31 @@
       (setq ocp-indent-config "strict_with=always,with=0,strict_comments=false")
       (require 'ocp-indent))
 
-        (defun ihodes/send-to-utop ()
-          "Send selected text to *utop*."
-          (interactive)
-          (progn
-            (let ((text (buffer-substring-no-properties
-                         (region-beginning) (region-end))))
-              (switch-to-buffer-other-window "*utop*")
-              (goto-char (point-max))
-              (insert (concat text " ;;")))))
+    (defun ihodes/send-to-utop ()
+      "Send selected text to *utop*."
+      (interactive)
+      (progn (let ((text (buffer-substring-no-properties
+                          (region-beginning) (region-end))))
+               (switch-to-buffer-other-window "*utop*") (goto-char (point-max))
+               (insert (concat text " ;;")))))
 
-        (use-package merlin
-          :bind ("C-c s" . ihodes/send-to-utop)
-          :init (unbind-key "C-c e"))
+    ;;; Hydra bindings
+    (use-package hydra :init
+      (defhydra hydra/compiling (:color pink)
+        ("t" (message "qwhoa!") "message me")
+        ("q" quit-window "quit" :color blue)))
 
-        (use-package smex
-          :ensure smex
-          :bind ("M-x" . smex)
-          :init
-          (unbind-key "M-x")
-          (unbind-key "<menu>")
-          (smex-initialize))
+    (use-package merlin
+      :bind ("C-c s" . ihodes/send-to-utop)
+      :init (unbind-key "C-c e"))
+
+    (use-package smex
+      :ensure smex
+      :bind ("M-x" . smex)
+      :init
+      (unbind-key "M-x")
+      (unbind-key "<menu>")
+      (smex-initialize))
 
     (use-package flycheck
       :diminish flycheck-mode
@@ -188,10 +194,12 @@
                                     auto-mode-alist)))
 
     (use-package ace-jump-mode
-      :bind ("M-SPC" . ace-jump-mode))
+      :bind ("M-o" . ace-jump-mode))
 
     (use-package ace-window
-      :bind ("M-p" . ace-window))
+      :bind ("C-x p" . ace-window))
+
+    (use-package clojure-mode)
 
     (use-package paredit
       :init
@@ -219,6 +227,7 @@
       (bind-keys :map web-mode-map ("C-c /" . web-mode-element-close)))
 
     (use-package smart-mode-line
+
       :init
       (setq sml/no-confirm-load-theme t)
       (sml/setup)
@@ -241,10 +250,6 @@
       :bind ("<f2>" . ag-project)
       :init (setq ag-highlight-search t))
 
-    (use-package expand-region
-      :bind (("s-=" . er/expand-region)
-             ("s--" . er/contract-region)))
-
     (use-package visual-regexp
       :bind (("C-c q" . vr/query-replace)
              ("C-c r" . vr/replace)
@@ -254,9 +259,15 @@
       :bind ("C-M-y" . browse-kill-ring))
 
     (use-package undo-tree-mode
+      :ensure undo-tree
       :init (global-undo-tree-mode)
       :bind (("C-x C-u" . undo-tree-undo)
-             ("C-x C-r" . undo-tree-redo)))
+             ("C-x C-r" . undo-tree-redo))
+      :config
+      ;; autosave the undo-tree history
+      (setq undo-tree-history-directory-alist
+            `((".*" . ,temporary-file-directory)))
+      (setq undo-tree-auto-save-history t))
 
     (use-package haskell-mode
       :mode "\\.hs\\'"
@@ -289,10 +300,58 @@
       :init
       (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
 
-    ;; (use-package yasnippet
-    ;;   :init
-    ;;     (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
-    ;;     (yas-global-mode 1))
+    (use-package mmm-mode
+      :init
+      ;; from http://jblevins.org/log/mmm
+      (defun mmm-markdown-auto-class (lang &optional submode)
+      "Define a mmm-mode class for LANG in `markdown-mode' using SUBMODE.
+       If SUBMODE is not provided, use `LANG-mode' by default."
+      (let ((class (intern (concat "gfm-" lang)))
+            (submode (or submode (intern (concat lang "-mode"))))
+            (front (concat "^```" lang "[\n\r]+"))
+            (back "^```$"))
+        (mmm-add-classes (list (list class :submode submode :front front :back back)))
+        (mmm-add-mode-ext-class 'gfm-mode nil class)))
+      (mapc 'mmm-markdown-auto-class
+            '("awk" "bibtex" "c" "cpp" "css" "html" "latex" "lisp" "elisp" "makefile"
+              "markdown" "python" "r" "ruby" "sql" "stata" "xml" "clojure" "scheme"
+              "python" "js" "ruby"))
+      (mmm-markdown-auto-class "shell" 'shell-script-mode)
+      ;; TODO: this is an error
+      ;;       (mmm-markdown-auto-class "ocaml" 'tuareg-mode)
+      (mmm-markdown-auto-class "javascript" 'js-mode)
+      (add-hook 'markdown-mode-hook 'mmm-mode)
+      (setq mmm-parse-when-idle 't))
+
+    (use-package markdown-mode
+      :bind
+      (:map markdown-mode-map
+            ("C-c >" .  org-time-stamp)
+            ("C-c <" .  org-date-from-calendar)
+            ("C-c m" . mmm-parse-buffer))
+      :init
+      (custom-set-faces
+       '(markdown-header-face   ((t (:inherit font-lock-function-name-face :weight bold :family "variable-pitch"))))
+       '(markdown-header-face-1 ((t (:inherit markdown-header-face :height 1.8))))
+       '(markdown-header-face-2 ((t (:inherit markdown-header-face :height 1.4))))
+       '(markdown-header-face-3 ((t (:inherit markdown-header-face :height 1.2)))))
+      (setq markdown-command "marked --gfm --tables --smart-lists --breaks")
+      (setq markdown-asymmetric-header t)
+      (setq markdown-gfm-additional-languages
+            '("ocaml" "python" "javascript" "js" "r" "java" "clojure" "scheme"))
+      (require 'semantic/sb)                ; so that we can use CEDET's setq-mode-local
+      (setq-mode-local
+       markdown-mode
+       show-trailing-whitespace nil))
+
+    (use-package deft
+      :bind 
+      ("<f8>" . deft)
+      :init
+      (setq deft-directory "~/Dropbox/text")
+      (setq deft-use-filename-as-title t)
+      (setq deft-extensions '("md" "txt" "tex" "org" "markdown"))
+      (setq deft-recursive t))
 
   #+END_SRC
 
@@ -304,8 +363,8 @@
       '(("\\.avpr?\\'" . js-mode)
         ("\\.avdl?\\'" . c-mode)
         ("\\.yml\\'" . yaml-mode)
-        ("\\.markdown\\'" . markdown-mode)
-        ("\\.md\\'" . markdown-mode)))
+        ("\\.markdown\\'" . gfm-mode)
+        ("\\.md\\'" . gfm-mode)))
 
     (dolist (mm ihodes/text-modes)
       (add-to-list 'auto-mode-alist mm))
@@ -316,8 +375,10 @@
   #+name: modes
   #+BEGIN_SRC emacs-lisp
     ;; https://github.com/purcell/exec-path-from-shell
-    (when (memq window-system '(mac ns))
-      (exec-path-from-shell-initialize))
+    (use-package exec-path-from-shell
+      :init
+      (when (memq window-system '(mac ns))
+        (exec-path-from-shell-initialize)))
 
     (add-hook 'sql-interactive-mode-hook '(lambda () (toggle-truncate-lines t)))
   #+END_SRC
@@ -329,7 +390,7 @@ Very rudimentary customization of ~org-mode~.
 Primarily we set our [[http://mobileorg.ncogni.to/][MobileOrg]] directory so that we can sync with the iPhone (or
 Android!) app. We also enable support for a variety of languages.
 
-#+name: org
+#+name: org-mode
 #+BEGIN_SRC emacs-lisp
   (bind-key "C-c c" 'org-capture)
   (bind-key "C-c a" 'org-agenda)
@@ -338,36 +399,77 @@ Android!) app. We also enable support for a variety of languages.
   (setq org-default-notes-file "~/org/notes.org")
   (setq org-mobile-directory "~/Dropbox/Apps/MobileOrg")
 
-  (org-babel-do-load-languages
-   (quote org-babel-load-languages)
-   (quote ((emacs-lisp . t)
-           (ditaa . t)
-           (dot . t)
-           (clojure . t)
-           (js . t)
-           (R . t)
-           (python . t)
-           (ruby . t)
-           (sh . t)
-           (ledger . t)
-           (org . t)
-           (latex . t))))
+
   (setq org-src-fontify-natively nil)
 
   (setq org-modules '(org-info
                       org-habit))
 
   (org-load-modules-maybe t)
+
+  (defun ihodes/org-link-at-point ()
+    "Return the link of the org-link at point."
+    (interactive)
+    (let* ((el (org-element-context))
+           (map (org-element-map el)))
+      (message (org-element-property :link map))))
+
+  (use-package org
+    :bind
+    ("C-c i" . ispell)
+    ("M-I" . org-toggle-inline-images)
+    ("M-i" . org-toggle-inline-image)
+    ("C-M-c" . ihodes/org-link-at-point))
+
 #+END_SRC
 
-We need to unbind ~S-<left|right|up|down>~ because ~org-mode~ steals these from
-~windmove~, which is not cool.
 
-#+name: modes
+
+This lets us drag'n'drop image links into org-mode.
+
+#+name: org-mode
 #+BEGIN_SRC emacs-lisp
-  (dolist (dir '("left" "right" "up" "down"))
-    (define-key org-mode-map (kbd (format "S-<%s>" dir)) nil))
+(defun my-dnd-func (event)
+  (interactive "e")
+  (goto-char (nth 1 (event-start event)))
+  (x-focus-frame nil)
+  (let* ((payload (car (last event)))
+         (type (car payload))
+         (fname (cadr payload))
+         (img-regexp "\\(png\\|jp[e]?g\\)\\>"))
+    (cond
+     ;; insert image link
+     ((and  (eq 'drag-n-drop (car event))
+            (eq 'file type)
+            (string-match img-regexp fname))
+      (insert (format "[[%s]]" fname))
+      (org-display-inline-images t t))
+     ;; insert image link with caption
+     ((and  (eq 'C-drag-n-drop (car event))
+            (eq 'file type)
+            (string-match img-regexp fname))
+      (insert "#+ATTR_ORG: :width 300\n")
+      (insert (concat  "#+CAPTION: " (read-input "Caption: ") "\n"))
+      (insert (format "[[%s]]" fname))
+      (org-display-inline-images t t))
+     ;; C-drag-n-drop to open a file
+     ((and  (eq 'C-drag-n-drop (car event))
+            (eq 'file type))
+      (find-file fname))
+     ((and (eq 'M-drag-n-drop (car event))
+           (eq 'file type))
+      (insert (format "[[attachfile:%s]]" fname)))
+     ;; regular drag and drop on file
+     ((eq 'file type)
+      (insert (format "[[%s]]\n" fname)))
+     (t
+      (error "I am not equipped for dnd on %s" payload)))))
+
+(define-key org-mode-map (kbd "<drag-n-drop>") 'my-dnd-func)
+(define-key org-mode-map (kbd "<C-drag-n-drop>") 'my-dnd-func)
+(define-key org-mode-map (kbd "<M-drag-n-drop>") 'my-dnd-func)
 #+END_SRC
+
 ** Python settings
 
 This lets us use the iPython kernel as the inferior Python process.
@@ -469,7 +571,7 @@ those here.
 ** Coq
    #+name: coq-mode
    #+BEGIN_SRC emacs-lisp
-     (load-file "/usr/local/share/emacs/site-lisp/ProofGeneral/generic/proof-site.el")
+     (load-file "/usr/local/share/emacs/site-lisp/proof-general/site-start.d/pg-init.el")
      (autoload 'coq-mode "coq" "Major mode for editing Coq vernacular." t)
      (setq auto-mode-alist (cons '("\\.v$" . coq-mode) auto-mode-alist))
      (eval-after-load 'coq-mode '(define-key coq-mode-map (kbd "C-c C-.") 'proof-goto-point))
@@ -642,6 +744,7 @@ those here.
   #+BEGIN_SRC emacs-lisp
     (bind-keys ("<f1>" . eshell)
                ("<f3>" . occur)
+               ("<f5>" . calc)
                ("<f6>" . revert-this-buffer)
                ("C-c M-w" . whitespace-mode)
                ("M-j" . (lambda () (interactive) (join-line -1)))
@@ -653,7 +756,9 @@ those here.
                ("C-x C-b" . ibuffer)
                ("C-x C-l" . goto-line)
                ("C-s" . isearch-forward-regexp)
-               ("C-r" . isearch-backward-regexp))
+               ("C-r" . isearch-backward-regexp)
+               ("s--" . text-scale-adjust)
+               ("s-=" . text-scale-adjust))
 
     (define-key 'help-command "A" #'apropos) ;; (C-h a)
 
@@ -672,6 +777,8 @@ those here.
              (interactive)
              (insert "console.log();")
              (backward-char 2)))))
+
+
   #+END_SRC
 * Projects
 
@@ -769,12 +876,12 @@ projects I frequently work on.
     <<look-and-feel>>
     <<packages>>
     <<modes>>
-    ;;;; <<coq-mode>>
+    <<coq-mode>>
+    <<org-mode>>
     <<functions>>
     <<defaults>>
     <<gittit>>
     <<bindings>>
     <<projects>>
   #+END_SRC
-
 * Archived
