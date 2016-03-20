@@ -328,11 +328,27 @@
       (:map markdown-mode-map
             ("C-c >" .  org-time-stamp)
             ("C-c <" .  org-date-from-calendar)
-            ("C-c m" . mmm-parse-buffer))
+            ("C-c m" . mmm-parse-buffer)
+            ("C-c j" . ihodes/start-new-journal-entry))
       :init
+      (defun ihodes/latlong-str ()
+        (let* ((loc-str "loc -once yes -format '*@(%latitude, %longitude)*'")
+               (latlong (shell-command-to-string loc-str)))
+          latlong))
+      (defun ihodes/insert-latlong ()
+        (interactive)
+        (insert (ihodes/latlong-str)))
+      (defun ihodes/start-new-journal-entry ()
+        (interactive)
+        (insert "### ")
+        (org-time-stamp 1)
+        (newline)
+        (insert (ihodes/latlong-str))
+        (newline))
       (custom-set-faces
-       '(markdown-header-face   ((t (:inherit font-lock-function-name-face :weight bold :family "variable-pitch"))))
-       '(markdown-header-face-1 ((t (:inherit markdown-header-face :height 1.8))))
+       '(markdown-header-face
+         ((t (:inherit font-lock-function-name-face :weight bold :family "variable-pitch"))))
+       '(markdown-header-face-1 ((t (:inherit markdown-header-face :height 1.7))))
        '(markdown-header-face-2 ((t (:inherit markdown-header-face :height 1.4))))
        '(markdown-header-face-3 ((t (:inherit markdown-header-face :height 1.2)))))
       (setq markdown-command "marked --gfm --tables --smart-lists --breaks")
@@ -340,19 +356,45 @@
       (setq markdown-gfm-additional-languages
             '("ocaml" "python" "javascript" "js" "r" "java" "clojure" "scheme"))
       (require 'semantic/sb)                ; so that we can use CEDET's setq-mode-local
-      (setq-mode-local
-       markdown-mode
-       show-trailing-whitespace nil))
+      (setq-mode-local markdown-mode show-trailing-whitespace nil))
 
     (use-package deft
-      :bind 
+      :bind
       ("<f8>" . deft)
+      ("<f9>" . ihodes/edit-current-weeks-note)
+      ("<f10>" . ihodes/edit-current-months-journal)
+      ("C-c C-r" . revert-buffer) ;; used to reload buffer, if e.g. Dropbox edits it.
       :init
-      (setq deft-directory "~/Dropbox/text")
+      (defun ihodes/edit-current-weeks-note ()
+        "Edit the note in ~/text/db/notes for the current week,
+    starting on Monday.
+
+    (That's why I add 6 to the DOW, to shift things over 6, to Monday)."
+        (interactive)
+        ;; TODO: This opens up a note for the current day; we really want last
+        ;;       Monday's date.
+        (let* ((dow (nth 6 (decode-time)))
+               (delta (% (+ dow 6) 7))
+               (days-delta (seconds-to-time (* delta 24 60 60 )))
+               (new-time (time-subtract (current-time) days-delta))
+               (date (format-time-string "%Y-%m-%d" new-time))
+               (filename (concat date ".md"))
+               (path (concat deft-directory "/db/notes/" filename)))
+          (find-file path)))
+      (defun ihodes/edit-current-months-journal ()
+        "Edit the journal text in ~/text/db/journal for the current month."
+        (interactive)
+        ;; TODO: This opens up a note for the current day; we really want last
+        ;;       Monday's date.
+        (let* ((date (format-time-string "%Y-%m"))
+               (filename (concat date ".md"))
+               (path (concat deft-directory "/db/journal/" filename)))
+          (find-file path)))
+      (setq deft-auto-save-interval 0)
+      (setq deft-directory "~/text")
       (setq deft-use-filename-as-title t)
       (setq deft-extensions '("md" "txt" "tex" "org" "markdown"))
       (setq deft-recursive t))
-
   #+END_SRC
 
   Finally we quick'n'dirtily set some little text modes.
