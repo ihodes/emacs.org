@@ -340,7 +340,7 @@
         (insert (ihodes/latlong-str)))
       (defun ihodes/start-new-journal-entry ()
         (interactive)
-        (insert "### ")
+        (insert "# ")
         (org-time-stamp 1)
         (newline)
         (insert (ihodes/latlong-str))
@@ -359,6 +359,7 @@
       (setq-mode-local markdown-mode show-trailing-whitespace nil))
 
     (use-package deft
+      :load-path "~/workspace/deft/"
       :bind
       ("<f8>" . deft)
       ("<f9>" . ihodes/edit-current-weeks-note)
@@ -393,8 +394,20 @@
       (setq deft-auto-save-interval 0)
       (setq deft-directory "~/text")
       (setq deft-use-filename-as-title t)
+      (setq deft-prefix-filename-title-with-subdirectory t)
       (setq deft-extensions '("md" "txt" "tex" "org" "markdown"))
       (setq deft-recursive t))
+
+    (use-package visual-fill-column
+      :init
+      (setq fill-column 80)
+      (defun ihodes/activate-visual-line-mode-for-journal ()
+        "Activate soft line-wrapping when inside a current journal entry; this lets us view them nicely on a mobile device as well as on desktop."
+        (when (and (string-match "db/journal/" (buffer-file-name))
+                   (string-match "\\.md\\'" (buffer-file-name)))
+          (progn (visual-fill-column-mode t)
+                 (visual-line-mode t))))
+      (add-hook 'find-file-hook 'ihodes/activate-visual-line-mode-for-journal))
   #+END_SRC
 
   Finally we quick'n'dirtily set some little text modes.
