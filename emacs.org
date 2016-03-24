@@ -372,8 +372,6 @@
 
     (That's why I add 6 to the DOW, to shift things over 6, to Monday)."
         (interactive)
-        ;; TODO: This opens up a note for the current day; we really want last
-        ;;       Monday's date.
         (let* ((dow (nth 6 (decode-time)))
                (delta (% (+ dow 6) 7))
                (days-delta (seconds-to-time (* delta 24 60 60 )))
@@ -381,16 +379,18 @@
                (date (format-time-string "%Y-%m-%d" new-time))
                (filename (concat date ".md"))
                (path (concat deft-directory "/db/notes/" filename)))
+          ()
           (find-file path)))
       (defun ihodes/edit-current-months-journal ()
         "Edit the journal text in ~/text/db/journal for the current month."
         (interactive)
-        ;; TODO: This opens up a note for the current day; we really want last
-        ;;       Monday's date.
         (let* ((date (format-time-string "%Y-%m"))
                (filename (concat date ".md"))
                (path (concat deft-directory "/db/journal/" filename)))
-          (find-file path)))
+          (find-file path)
+          (if (file-exists-p path)
+              t
+              (insert "### Monday\n\n### Tuesday\n\n### Wednesday\n\n### Thursday\n\n### Friday\n\n"))))
       (setq deft-auto-save-interval 0)
       (setq deft-directory "~/text")
       (setq deft-use-filename-as-title t)
