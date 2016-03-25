@@ -64,6 +64,7 @@
   #+name: defaults
   #+BEGIN_SRC emacs-lisp
     (column-number-mode t)
+    (setq compilation-scroll-output t)
     (setq kill-ring-max 500)
     (setq js-indent-level 2)
     (setq tramp-default-method "ssh")
@@ -324,6 +325,7 @@
       (setq mmm-parse-when-idle 't))
 
     (use-package markdown-mode
+      :load-path "~/workspace/markdown-mode"
       :bind
       (:map markdown-mode-map
             ("C-c >" .  org-time-stamp)
@@ -390,7 +392,7 @@
           (find-file path)
           (if (file-exists-p path)
               t
-              (insert "### Monday\n\n### Tuesday\n\n### Wednesday\n\n### Thursday\n\n### Friday\n\n"))))
+              (insert "## Monday\n\n## Tuesday\n\n## Wednesday\n\n## Thursday\n\n## Friday\n\n"))))
       (setq deft-auto-save-interval 0)
       (setq deft-directory "~/text")
       (setq deft-use-filename-as-title t)
@@ -401,7 +403,7 @@
     (use-package visual-fill-column
       :init
       (setq fill-column 80)
-      (defun ihodes/activate-visual-line-mode-for-journal ()
+      (defun ihodes/activate-visual-line-mode-for-notes ()
         "Activate soft line-wrapping when inside a text file that can
     be read in Dropbox; this lets us view them nicely on a mobile
     device as well as on desktop."
@@ -410,7 +412,7 @@
           (progn (visual-fill-column-mode t)
                  (visual-line-mode t)
                  (adaptive-wrap-prefix-mode t))))
-      (add-hook 'find-file-hook 'ihodes/activate-visual-line-mode-for-journal))
+      (add-hook 'find-file-hook 'ihodes/activate-visual-line-mode-for-notes))
 
     (use-package adaptive-wrap)
   #+END_SRC
