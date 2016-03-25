@@ -69,6 +69,8 @@
     (setq js-indent-level 2)
     (setq tramp-default-method "ssh")
     (setq auto-save-default nil)
+    (global-set-key "\M-n" "\C-u3\C-v")
+    (global-set-key "\M-p" "\C-u3\M-v")
     (require 'uniquify)
     (setq-default uniquify-buffer-name-style 'forward)
     (require 'saveplace)
