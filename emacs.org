@@ -69,8 +69,8 @@
     (setq js-indent-level 2)
     (setq tramp-default-method "ssh")
     (setq auto-save-default nil)
-    (global-set-key "\M-n" "\C-u3\C-v")
-    (global-set-key "\M-p" "\C-u3\M-v")
+    (global-set-key "\M-N" "\C-u3\C-v")
+    (global-set-key "\M-P" "\C-u3\M-v")
     (require 'uniquify)
     (setq-default uniquify-buffer-name-style 'forward)
     (require 'saveplace)
@@ -365,36 +365,50 @@
     (use-package deft
       :load-path "~/workspace/deft/"
       :bind
-      ("<f8>" . deft)
-      ("<f9>" . ihodes/edit-current-weeks-note)
-      ("<f10>" . ihodes/edit-current-months-journal)
-      ("C-c C-r" . revert-buffer) ;; used to reload buffer, if e.g. Dropbox edits it.
+      (("<f8>" . deft)
+       ("<f9>" . ihodes/edit-work-week-note)
+       ("<f10>" . ihodes/edit-personal-week-note)
+       ("<f12>" . ihodes/edit-current-months-journal)
+       ("C-c C-r" . revert-buffer) ;; used to reload buffer, if e.g. Dropbox edits it.
+       :map deft-mode-map
+       ("C-c C-j" . ihodes/toggle-index-journal-archives))
       :init
-      (defun ihodes/edit-current-weeks-note ()
-        "Edit the note in ~/text/db/notes for the current week,
-    starting on Monday.
-
-    (That's why I add 6 to the DOW, to shift things over 6, to Monday)."
+      ;; Don't want to waste time indexing archived journal entries
+      (setq deft-ignore-file-regexp "journal-archive")
+      (defun ihodes/toggle-index-journal-archives ()
+        "Shows/hides archived journal entries in Deft."
         (interactive)
+        (if (string= deft-ignore-file-regexp "journal-archive")
+            (setq deft-ignore-file-regexp "\\(?:^$\\)")
+          (setq deft-ignore-file-regexp "journal-archive"))
+        (deft-refresh))
+      (defun ihodes/edit-work-week-note () (interactive) (ihodes/edit-current-weeks-note "~/text/db/work/"))
+      (defun ihodes/edit-personal-week-note () (interactive) (ihodes/edit-current-weeks-note "~/text/db/notes/"))
+      (defun ihodes/last-monday ()
+        "Return the previous Monday as a time value, or current day, if today is Monday."
         (let* ((dow (nth 6 (decode-time)))
                (delta (% (+ dow 6) 7))
-               (days-delta (seconds-to-time (* delta 24 60 60 )))
-               (new-time (time-subtract (current-time) days-delta))
+               (days-delta (seconds-to-time (* delta 24 60 60 ))))
+          (time-subtract (current-time) days-delta)))
+      (defun ihodes/edit-current-weeks-note (directory)
+        "Edit the note for the current week, starting on Monday, in
+    the given directory"
+        (interactive "DDeft Subdirectory: ")
+        (let* ((new-time (ihodes/last-monday))
                (date (format-time-string "%Y-%m-%d" new-time))
                (filename (concat date ".md"))
-               (path (concat deft-directory "/db/notes/" filename)))
-          ()
-          (find-file path)))
+               (path (concat directory filename)))
+          (find-file path)
+          (if (file-exists-p path)
+              t
+            (insert "## Monday\n\n## Tuesday\n\n## Wednesday\n\n## Thursday\n\n## Friday\n\n"))))
       (defun ihodes/edit-current-months-journal ()
         "Edit the journal text in ~/text/db/journal for the current month."
         (interactive)
         (let* ((date (format-time-string "%Y-%m"))
                (filename (concat date ".md"))
                (path (concat deft-directory "/db/journal/" filename)))
-          (find-file path)
-          (if (file-exists-p path)
-              t
-              (insert "## Monday\n\n## Tuesday\n\n## Wednesday\n\n## Thursday\n\n## Friday\n\n"))))
+          (find-file path)))
       (setq deft-auto-save-interval 0)
       (setq deft-directory "~/text")
       (setq deft-use-filename-as-title t)
@@ -446,6 +460,21 @@
 
     (add-hook 'sql-interactive-mode-hook '(lambda () (toggle-truncate-lines t)))
   #+END_SRC
+
+** Journal & Notess
+
+I use emacs + markdown to journal and take notes. This is synced via Dropbox so
+that I can 1) have my notes saved somewhere safe and 2) view and edit notes on
+my mobile device.
+
+deft and markdown-mode do much of the heavy lifting here. I use local checkouts
+so that I can pick up my modifications to these libraries as soon as I need
+them.
+
+#+name journaling
+#+BEGIN_SRC emacs-lisp
+
+#+END_SRC
 
 ** Org
 
@@ -946,6 +975,7 @@ projects I frequently work on.
     <<defaults>>
     <<gittit>>
     <<bindings>>
+    <<journaling>>
     <<projects>>
   #+END_SRC
 * Archived
