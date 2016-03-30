@@ -293,6 +293,8 @@
               (pop-to-buffer buffer)
               (delete-other-windows))))
 
+    (use-package git-timemachine)
+
     (use-package fullframe
       :init
       (fullframe magit-status magit-mode-quit-window))
@@ -502,7 +504,7 @@
     (add-hook 'sql-interactive-mode-hook '(lambda () (toggle-truncate-lines t)))
   #+END_SRC
 
-** Journal & Notess
+** Journal & Notes
 
 I use emacs + markdown to journal and take notes. This is synced via Dropbox so
 that I can 1) have my notes saved somewhere safe and 2) view and edit notes on
