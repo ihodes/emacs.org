@@ -127,9 +127,9 @@
     (defun ihodes/set-exec-path-from-shell-PATH ()
       "Set up Emacs' `exec-path' and PATH environment variable to match that used by the user's shell.
 
-    This is particularly useful under Mac OSX, where GUI apps are not started from a shell.
+        This is particularly useful under Mac OSX, where GUI apps are not started from a shell.
 
-    from http://stackoverflow.com/questions/8606954/path-and-exec-path-set-but-emacs-does-not-find-executable"
+        from http://stackoverflow.com/questions/8606954/path-and-exec-path-set-but-emacs-does-not-find-executable"
       (interactive)
       (let ((path-from-shell (replace-regexp-in-string "[ \t\n]*$" "" (shell-command-to-string "$SHELL --login -i -c 'echo $PATH'"))))
         (setenv "PATH" path-from-shell)
@@ -171,11 +171,18 @@
                (switch-to-buffer-other-window "*utop*") (goto-char (point-max))
                (insert (concat text " ;;")))))
 
-    ;;; Hydra bindings
-    (use-package hydra :init
-      (defhydra hydra/compiling (:color pink)
-        ("t" (message "qwhoa!") "message me")
-        ("q" quit-window "quit" :color blue)))
+        ;;; Hydra bindings
+    (use-package hydra
+      :init
+      (defhydra ihodes/hydra/add-note (:color blue :hint nil)
+        "
+    Add a note with a special name.\n
+    _w_: work          _p_: personal
+
+    "
+        ("w" (ihodes/add-custom-note "~/text/db/work/"))
+        ("p" (ihodes/add-custom-note "~/text/db/notes/"))
+        ("c" nil "cancel")))
 
     (use-package merlin
       :bind ("C-c s" . ihodes/send-to-utop)
@@ -230,7 +237,6 @@
       (bind-keys :map web-mode-map ("C-c /" . web-mode-element-close)))
 
     (use-package smart-mode-line
-
       :init
       (setq sml/no-confirm-load-theme t)
       (sml/setup)
@@ -307,14 +313,14 @@
       :init
       ;; from http://jblevins.org/log/mmm
       (defun mmm-markdown-auto-class (lang &optional submode)
-      "Define a mmm-mode class for LANG in `markdown-mode' using SUBMODE.
-       If SUBMODE is not provided, use `LANG-mode' by default."
-      (let ((class (intern (concat "gfm-" lang)))
-            (submode (or submode (intern (concat lang "-mode"))))
-            (front (concat "^```" lang "[\n\r]+"))
-            (back "^```$"))
-        (mmm-add-classes (list (list class :submode submode :front front :back back)))
-        (mmm-add-mode-ext-class 'gfm-mode nil class)))
+        "Define a mmm-mode class for LANG in `markdown-mode' using SUBMODE.
+           If SUBMODE is not provided, use `LANG-mode' by default."
+        (let ((class (intern (concat "gfm-" lang)))
+              (submode (or submode (intern (concat lang "-mode"))))
+              (front (concat "^```" lang "[\n\r]+"))
+              (back "^```$"))
+          (mmm-add-classes (list (list class :submode submode :front front :back back)))
+          (mmm-add-mode-ext-class 'gfm-mode nil class)))
       (mapc 'mmm-markdown-auto-class
             '("awk" "bibtex" "c" "cpp" "css" "html" "latex" "lisp" "elisp" "makefile"
               "markdown" "python" "r" "ruby" "sql" "stata" "xml" "clojure" "scheme"
@@ -333,25 +339,55 @@
             ("C-c >" .  org-time-stamp)
             ("C-c <" .  org-date-from-calendar)
             ("C-c m" . mmm-parse-buffer)
-            ("C-c j" . ihodes/start-new-journal-entry))
+            ("C-c j" . ihodes/hydra/start-new-journal-entry/body))
       :init
+      (defun s-trim-right (s)
+        "Remove whitespace at the end of S."
+        (if (string-match "[ \t\n\r]+\\'" s)
+            (replace-match "" t t s)
+          s))
       (defun ihodes/latlong-str ()
-        (let* ((loc-str "loc -once yes -format '*@(%latitude, %longitude)*'")
-               (latlong (shell-command-to-string loc-str)))
+        (let* ((loc-str "loc -once yes -format '%latitude, %longitude'")
+               (latlong (shell-command-to-string loc-str))
+               (latlong (s-trim-right latlong)))
           latlong))
       (defun ihodes/insert-latlong ()
         (interactive)
         (insert (ihodes/latlong-str)))
-      (defun ihodes/start-new-journal-entry ()
-        (interactive)
-        (insert "# ")
-        (org-time-stamp 1)
-        (newline)
-        (insert (ihodes/latlong-str))
-        (newline))
+      (defun read-string-from-file (path)
+        "Return filePath's file content as a lisp form."
+        (with-temp-buffer
+          (insert-file-contents path)
+          (car (read-from-string (buffer-string)))))
+      (defmacro ihodes/make/start-new-journal-entry
+          (locations-spec)
+        (append
+         (list 'defhydra 'ihodes/hydra/start-new-journal-entry '(:color blue) "Where are you now")
+         (mapcar '(lambda (spec)
+                    (list (nth 0 spec)
+                          (list 'ihodes/start-new-journal-entry (nth 1 spec))
+                          (nth 2 spec)))
+                 (eval locations-spec))
+         (list (list "c" nil "cancel"))))
+      (ihodes/make/start-new-journal-entry (read-string-from-file "~/workspace/emacs.org/locations.el"))
+      (defun ihodes/start-new-journal-entry (location)
+        (let ((location (if (stringp location)
+                            (concat ": " location)
+                          (if location
+                              (concat ": " (read-string "Where are you? "))
+                            ""))))
+          (insert "# ")
+          (org-time-stamp 1)
+          (newline)
+          (insert "*@(")
+          (insert (ihodes/latlong-str))
+          (insert location)
+          (insert ")*")
+          (newline 2)))
       (custom-set-faces
        '(markdown-header-face
-         ((t (:inherit font-lock-function-name-face :weight bold :family "variable-pitch"))))
+         ((t (:inherit font-lock-function-name-face
+              :weight bold :family "variable-pitch"))))
        '(markdown-header-face-1 ((t (:inherit markdown-header-face :height 1.7))))
        '(markdown-header-face-2 ((t (:inherit markdown-header-face :height 1.4))))
        '(markdown-header-face-3 ((t (:inherit markdown-header-face :height 1.2)))))
@@ -365,7 +401,8 @@
     (use-package deft
       :load-path "~/workspace/deft/"
       :bind
-      (("<f8>" . deft)
+      (("<f7>" . ihodes/hydra/add-note/body)
+       ("<f8>" . deft)
        ("<f9>" . ihodes/edit-work-week-note)
        ("<f10>" . ihodes/edit-personal-week-note)
        ("<f12>" . ihodes/edit-current-months-journal)
@@ -382,6 +419,10 @@
             (setq deft-ignore-file-regexp "\\(?:^$\\)")
           (setq deft-ignore-file-regexp "journal-archive"))
         (deft-refresh))
+      (defun ihodes/add-custom-note (subdirectory)
+        (let ((note-name
+               (read-file-name "What should the title be? " subdirectory)))
+          (find-file note-name)))
       (defun ihodes/edit-work-week-note () (interactive) (ihodes/edit-current-weeks-note "~/text/db/work/"))
       (defun ihodes/edit-personal-week-note () (interactive) (ihodes/edit-current-weeks-note "~/text/db/notes/"))
       (defun ihodes/last-monday ()
@@ -392,7 +433,7 @@
           (time-subtract (current-time) days-delta)))
       (defun ihodes/edit-current-weeks-note (directory)
         "Edit the note for the current week, starting on Monday, in
-    the given directory"
+        the given directory"
         (interactive "DDeft Subdirectory: ")
         (let* ((new-time (ihodes/last-monday))
                (date (format-time-string "%Y-%m-%d" new-time))
@@ -401,7 +442,7 @@
           (find-file path)
           (if (file-exists-p path)
               t
-            (insert "## Monday\n\n## Tuesday\n\n## Wednesday\n\n## Thursday\n\n## Friday\n\n"))))
+            (insert "# Monday\n\n# Tuesday\n\n# Wednesday\n\n# Thursday\n\n# Friday\n\n"))))
       (defun ihodes/edit-current-months-journal ()
         "Edit the journal text in ~/text/db/journal for the current month."
         (interactive)
@@ -421,8 +462,8 @@
       (setq fill-column 80)
       (defun ihodes/activate-visual-line-mode-for-notes ()
         "Activate soft line-wrapping when inside a text file that can
-    be read in Dropbox; this lets us view them nicely on a mobile
-    device as well as on desktop."
+        be read in Dropbox; this lets us view them nicely on a mobile
+        device as well as on desktop."
         (when (and (string-match "text/" (buffer-file-name))
                    (string-match "\\.md\\'" (buffer-file-name)))
           (progn (visual-fill-column-mode t)
