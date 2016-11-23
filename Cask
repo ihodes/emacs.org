@@ -69,3 +69,6 @@
 (depends-on "window-numbering")
 (depends-on "fullframe")
 (depends-on "merlin")
+(depends-on "ledger-mode")
+(depends-on "hydra")
+(depends-on "org")
