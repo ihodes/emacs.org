@@ -6,3 +6,6 @@ mode.
 You can see the configuration in ~emacs.org~, which is compiled and loaded
 by ~init.el~.
 
+* Other requirements
+
+The ~marked~ markdown compiler. ~opam~ and ~ocp-indent~ are required for OCaml work.

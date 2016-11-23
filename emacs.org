@@ -431,7 +431,7 @@ them.
                (eval locations-spec))
        (list (list "c" nil "cancel"))))
     ;; This is so that the location of e.g. my house isn't stored in Github
-    (ihodes/make/start-new-journal-entry (read-string-from-file "~/workspace/emacs.org/locations.el"))
+    (ihodes/make/start-new-journal-entry (read-string-from-file "locations.el"))
     (defun ihodes/start-new-journal-entry (location)
       (let ((location (if (stringp location)
                           (concat ": " location)
