@@ -908,6 +908,13 @@ those here.
       (revert-buffer nil t t)
       (message (concat "Reverted buffer " (buffer-name))))
 
+    (defun opam-env ()
+      (interactive nil)
+      (dolist (var (car (read-from-string
+                         (shell-command-to-string "opam config env --sexp"))))
+        (setenv (car var) (cadr var)))
+      (setq exec-path (append (parse-colon-path (getenv "PATH"))
+                              (list exec-directory))))
   #+END_SRC
 * Bindings
 
