@@ -208,6 +208,7 @@
 
     (use-package merlin
       :bind ("C-c s" . ihodes/send-to-utop)
+            ("C-c d" . merlin-document)
       :init (unbind-key "C-c e"))
 
     (use-package smex
