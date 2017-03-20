@@ -117,34 +117,22 @@
 ** Main
   #+name: modes
   #+BEGIN_SRC emacs-lisp
-    (use-package ido
+    (use-package ivy
+      :init (ivy-mode 1)
+      (setq ivy-use-virtual-buffers t)
+      (setq enable-recursive-minibuffers t)
+      (setq ivy-re-builders-alist
+            '((ivy-switch-buffer . ivy--regex-plus)
+              (t . ivy--regex-fuzzy))))
+
+    (use-package flx)
+
+    (use-package counsel
       :init
-      (ido-mode 1)
-      (recentf-mode 1)
-      (setq ido-vertical-define-keys 'C-n-C-p-up-and-down)
-      (use-package ido-ubiquitous
-        :ensure ido-ubiquitous
-        :init
-        (ido-ubiquitous-mode 1))
+      (global-set-key (kbd "M-x") 'counsel-M-x)
+      (global-set-key (kbd "C-x C-f") 'counsel-find-file))
 
-      (use-package ido-vertical-mode
-        :ensure ido-vertical-mode
-        :init (ido-vertical-mode))
-
-      (use-package flx-ido
-        :ensure flx-ido
-        :init
-        (setq flx-ido-threshold 1000)
-        (flx-ido-mode 1))
-      (setq ido-enable-flex-matching t
-            ido-everywhere t
-            ido-use-faces nil ;; disable ido faces to see flx highlights.
-            ido-create-new-buffer 'always
-            ido-use-filename-at-point 'guess
-            ido-enable-flex-matching t)
-      :bind
-      ("<f4>" . ido-recentf-open)
-      ("C-x C-d" . ido-dired))
+    (use-package swiper)
 
     (defun ihodes/set-exec-path-from-shell-PATH ()
       "Set up Emacs' `exec-path' and PATH environment variable to match that used by the user's shell.
