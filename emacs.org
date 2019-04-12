@@ -10,16 +10,6 @@
 
   #+name: prelude
   #+BEGIN_SRC emacs-lisp
-    (load-file "~/.private.el")
-
-    (defun ihodes/latlong-str ()
-        (let* ((loc-str "loc -once yes -format '%latitude, %longitude'")
-               (latlong (shell-command-to-string loc-str))
-               (latlong (s-trim-right latlong)))
-          latlong))
-    (defun ihodes/insert-latlong ()
-      (interactive)
-      (insert (ihodes/latlong-str)))
     (defun read-string-from-file (path)
       "Return filePath's file content as a lisp form."
       (with-temp-buffer
@@ -38,8 +28,8 @@
     (setq inhibit-startup-message t)
     (setq inhibit-startup-echo-area-message "isaachodes")
     (menu-bar-mode -1)
-    (tool-bar-mode -1)
-    (scroll-bar-mode -1)
+    (if (boundp tool-bar-mode) (tool-bar-mode -1))
+    (if (boundp 'scroll-bar-mode)  (scroll-bar-mode -1))
     (show-paren-mode 1)
     (set-face-attribute 'mode-line nil
                         :foreground "gray100" :background "gray10"
@@ -409,32 +399,6 @@ them.
       (if (string-match "[ \t\n\r]+\\'" s)
           (replace-match "" t t s)
         s))
-    (defmacro ihodes/make/start-new-journal-entry
-        (locations-spec)
-      (append
-       (list 'defhydra 'ihodes/hydra/start-new-journal-entry '(:color blue) "Where are you now?")
-       (mapcar '(lambda (spec)
-                  (list (nth 0 spec)
-                        (list 'ihodes/start-new-journal-entry (nth 1 spec))
-                        (nth 2 spec)))
-               (eval locations-spec))
-       (list (list "c" nil "cancel"))))
-    ;; This is so that the location of e.g. my house isn't stored in Github
-    (ihodes/make/start-new-journal-entry (read-string-from-file "locations.el"))
-    (defun ihodes/start-new-journal-entry (location)
-      (let ((location (if (stringp location)
-                          (concat ": " location)
-                        (if location
-                            (concat ": " (read-string "Where are you? "))
-                          ""))))
-        (insert "# ")
-        (org-time-stamp 1)
-        (newline)
-        (insert "*@(")
-        (insert (ihodes/latlong-str))
-        (insert location)
-        (insert ")*")
-        (newline 2)))
     (custom-set-faces
      '(markdown-header-face
        ((t (:inherit font-lock-function-name-face
