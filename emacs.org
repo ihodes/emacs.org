@@ -624,6 +624,16 @@ Some simple EIN customizations.
     ;;   (ein:notebooklist-load)
     ;;   (ein:notebooklist-open))
   #+END_SRC
+** Javascript / Typescript
+  #+name: modes
+  #+BEGIN_SRC emacs-lisp
+    (use-package typescript-mode
+      :init
+      (require 'ansi-color)
+      (defun colorize-compilation-buffer ()
+        (ansi-color-apply-on-region compilation-filter-start (point-max)))
+      (add-hook 'compilation-filter-hook 'colorize-compilation-buffer))
+  #+END_SRC
 ** Clojure settings
 
 Clojure-mode is useful for ~.edn~, ~.cljs~, and ~.cljx~ files as well.
