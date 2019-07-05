@@ -146,11 +146,15 @@
                               (list exec-directory)))
       ;; Automatically load utop.el
       (autoload 'utop "utop" "Toplevel for OCaml" t)
-      (autoload 'utop-setup-ocaml-buffer "utop" "Toplevel for OCaml" t)
+      (autoload 'utop-minor-mode "utop" "Toplevel for OCaml" t)
       (add-hook 'tuareg-mode-hook 'utop-setup-ocaml-buffer)
       (add-hook 'typerex-mode-hook 'utop-setup-ocaml-buffer)
       (add-hook 'tuareg-mode-hook 'merlin-mode)
       (add-hook 'tuareg-mode-hook 'ocp-setup-indent)
+      (add-hook 'tuareg-mode-hook
+                (lambda ()
+                  (define-key tuareg-mode-map (kbd "C-M-<tab>") #'ocamlformat)
+                  (add-hook 'before-save-hook #'ocamlformat-before-save)))
       (setq merlin-use-auto-complete-mode 'easy)
       (setq merlin-command 'opam)
       ;;(add-to-list 'company-backends 'merlin-company-backend)
