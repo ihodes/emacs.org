@@ -72,3 +72,4 @@
 (depends-on "ledger-mode")
 (depends-on "hydra")
 (depends-on "org")
+(depends-on "tide")
