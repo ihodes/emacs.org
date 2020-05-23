@@ -255,6 +255,9 @@
       (global-company-mode t)
       (add-to-list 'company-backends 'company-anaconda))
 
+    (use-package company-box
+      :hook (company-mode . company-box-mode))
+
     (use-package ag
       :bind ("<f2>" . ag-project)
       :init (setq ag-highlight-search t))

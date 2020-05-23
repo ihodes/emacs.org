@@ -51,6 +51,7 @@
 (depends-on "projectile")
 (depends-on "undo-tree")
 (depends-on "company")
+(depends-on "company-box")
 (depends-on "company-anaconda")
 (depends-on "ag")
 (depends-on "exec-path-from-shell")
