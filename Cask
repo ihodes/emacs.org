@@ -9,6 +9,7 @@
 (depends-on "exec-path-from-shell")
 (depends-on "expand-region")
 (depends-on "f")
+(depends-on "solarized-theme")
 (depends-on "htmlize")
 (depends-on "idle-highlight-mode")
 (depends-on "multiple-cursors")
