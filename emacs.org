@@ -175,7 +175,7 @@
                (switch-to-buffer-other-window "*utop*") (goto-char (point-max))
                (insert (concat text " ;;")))))
 
-        ;;; Hydra bindings
+    ;; Hydra bindings
     (use-package hydra
       :init
       (defhydra ihodes/hydra/add-note (:color blue :hint nil)
@@ -193,13 +193,6 @@
             ("C-c d" . merlin-document)
       :init (unbind-key "C-c e"))
 
-    (use-package smex
-      :ensure smex
-      :bind ("M-x" . smex)
-      :init
-      (unbind-key "M-x")
-      (unbind-key "<menu>")
-      (smex-initialize))
 
     (use-package flycheck
       :diminish flycheck-mode
@@ -212,7 +205,7 @@
       :bind ("M-o" . ace-jump-mode))
 
     (use-package ace-window
-      :bind ("C-x p" . ace-window))
+      :bind ("M-o" . ace-window))
 
     (use-package clojure-mode)
 
@@ -253,7 +246,9 @@
       (add-to-list 'sml/hidden-modes " hl-s")
       (add-to-list 'sml/hidden-modes " Helm")
       (add-to-list 'sml/hidden-modes " company")
-      (add-to-list 'sml/hidden-modes " yas"))
+      (add-to-list 'sml/hidden-modes " yas")
+      (add-to-list 'sml/hidden-modes " ivy")
+      (add-to-list 'sml/hidden-modes " Projectile"))
 
     (use-package company
       :init
@@ -308,10 +303,6 @@
               (delete-other-windows))))
 
     (use-package git-timemachine)
-
-    (use-package fullframe
-      :init
-      (fullframe magit-status magit-mode-quit-window))
 
     (use-package projectile
       :bind ("s-p" . projectile-commander)
