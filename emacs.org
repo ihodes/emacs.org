@@ -16,12 +16,30 @@
         (insert-file-contents path)
         (car (read-from-string (buffer-string)))))
   #+END_SRC
+
+* Packages
+
+n  We load and configure all packages with
+  [[https://github.com/jwiegley/use-package]] mode, which we bootstrapped
+  in `init.el`.
+
+  #+name: packages
+  #+BEGIN_SRC emacs-lisp
+    (require 'use-package)
+    (setq use-package-always-ensure t)
+  #+END_SRC
+
+
 * Look & Feel
 
   First things first, let's make emacs pretty.
 
   #+name: look-and-feel
   #+BEGIN_SRC emacs-lisp
+    ;; Install solarized theme if not already installed
+    (use-package solarized-theme
+      :ensure t)
+
     (load-theme 'solarized-dark t)
     (setq ihodes/dark-theme 'solarized-dark)
     (setq ihodes/light-theme 'solarized-light)
@@ -36,8 +54,8 @@
     (setq inhibit-startup-message t)
     (setq inhibit-startup-echo-area-message "isaachodes")
     (menu-bar-mode -1)
-    (if (boundp tool-bar-mode) (tool-bar-mode -1))
-    (if (boundp 'scroll-bar-mode)  (scroll-bar-mode -1))
+    (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+    (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
     (show-paren-mode 1)
     (set-face-attribute 'mode-line nil
                         :foreground "gray100" :background "gray10"
@@ -47,33 +65,6 @@
                         :foreground "gray30" :background "gray10"
                         :inverse-video nil
                         :box '(:line-width 6 :color "gray10" :style nil))
-  #+END_SRC
-* Packages
-
-  Load up *package* & ensure that *use-package* will install all other packages.
-
-  #+name: packages
-  #+BEGIN_SRC emacs-lisp
-    (require 'package)
-    (package-initialize)
-    (setq package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
-                             ("marmalade" . "https://marmalade-repo.org/packages/")
-                             ("melpa" . "https://melpa.org/packages/")))
-  #+END_SRC
-
-  We load and configure all packages with the glorious [[https://github.com/jwiegley/use-package][use-package]] mode.
-
-  #+name: modes
-  #+BEGIN_SRC emacs-lisp
-    (require 'use-package)
-  #+END_SRC
-
-  This will ensure all our packages are installed (that are wrapped in
-  use-package). We must first manually install use-package.
-
-  #+name: modes
-  #+BEGIN_SRC emacs-lisp
-    (setq use-package-always-ensure t)
   #+END_SRC
 
 * Defaults
@@ -87,15 +78,16 @@
     (setq compilation-scroll-output t)
     (setq kill-ring-max 500)
     (setq js-indent-level 2)
+    (setq make-backup-files nil)  ; Stop making backup files
+    (setq auto-save-default nil)  ; Stop auto-save files (#name#)
     (setq tramp-default-method "ssh")
     (setq auto-save-default nil)
     (global-set-key "\M-N" "\C-u3\C-v")
     (global-set-key "\M-P" "\C-u3\M-v")
     (require 'uniquify)
     (setq-default uniquify-buffer-name-style 'forward)
-    (require 'saveplace)
-    (setq-default save-place t
-                  save-place-file (concat user-emacs-directory "places"))
+
+    (setq-default save-place-file (concat user-emacs-directory "places"))
     (setq-default indent-tabs-mode nil
                   fill-column 80
                   show-trailing-whitespace t
@@ -116,19 +108,14 @@
   #+name: modes
   #+BEGIN_SRC emacs-lisp
     (use-package ivy
+      :ensure t
       :init (ivy-mode 1)
+      :config
       (setq ivy-use-virtual-buffers t)
       (setq enable-recursive-minibuffers t)
       (setq ivy-re-builders-alist
             '((ivy-switch-buffer . ivy--regex-plus)
               (t . ivy--regex-fuzzy))))
-
-    (use-package counsel
-      :init
-      (global-set-key (kbd "M-x") 'counsel-M-x)
-      (global-set-key (kbd "C-x C-f") 'counsel-find-file))
-
-    (use-package swiper)
 
     (defun ihodes/set-exec-path-from-shell-PATH ()
       "Set up Emacs' `exec-path' and PATH environment variable to match that used by the user's shell.
@@ -141,84 +128,31 @@
         (setenv "PATH" path-from-shell)
         (setq exec-path (split-string path-from-shell path-separator))))
 
-    (use-package tuareg
-      :init
-      ;; Setup environment variables using opam
-      (ihodes/set-exec-path-from-shell-PATH)
-      (dolist (var (car (read-from-string (shell-command-to-string "opam config env --sexp"))))
-        (setenv (car var) (cadr var)))
-      ;; Update the emacs path
-      (setq exec-path (append (parse-colon-path (getenv "PATH"))
-                              (list exec-directory)))
-      ;; Automatically load utop.el
-      (autoload 'utop "utop" "Toplevel for OCaml" t)
-      (autoload 'utop-minor-mode "utop" "Toplevel for OCaml" t)
-      (add-hook 'tuareg-mode-hook 'utop-setup-ocaml-buffer)
-      (add-hook 'typerex-mode-hook 'utop-setup-ocaml-buffer)
-      (add-hook 'tuareg-mode-hook 'merlin-mode)
-      (add-hook 'tuareg-mode-hook 'ocp-setup-indent)
-      (add-hook 'tuareg-mode-hook
-                (lambda ()
-                  (define-key tuareg-mode-map (kbd "C-M-<tab>") #'ocamlformat)
-                  (add-hook 'before-save-hook #'ocamlformat-before-save)))
-      (setq merlin-use-auto-complete-mode 'easy)
-      (setq merlin-command 'opam)
-      (add-hook 'merlin-mode-hook 'company-mode)
-
-      (setq opam-share
-            (substring
-             (shell-command-to-string "opam config var share 2> /dev/null") 0 -1))
-      (add-to-list 'load-path (concat opam-share "/emacs/site-lisp"))
-      (setq ocp-indent-config "strict_with=always,with=0,strict_comments=false")
-      (require 'ocp-indent))
-
-    (require 'ocamlformat)
-
-    (defun ihodes/send-to-utop ()
-      "Send selected text to *utop*."
-      (interactive)
-      (progn (let ((text (buffer-substring-no-properties
-                          (region-beginning) (region-end))))
-               (switch-to-buffer-other-window "*utop*") (goto-char (point-max))
-               (insert (concat text " ;;")))))
-
-    ;; Hydra bindings
-    (use-package hydra
-      :init
-      (defhydra ihodes/hydra/add-note (:color blue :hint nil)
-        "
-    Add a note with a special name.\n
-    _w_: work          _p_: personal
-
-    "
-        ("w" (ihodes/add-custom-note "~/text/db/work/"))
-        ("p" (ihodes/add-custom-note "~/text/db/notes/"))
-        ("c" nil "cancel")))
-
-    (use-package merlin
-      :bind ("C-c s" . ihodes/send-to-utop)
-            ("C-c d" . merlin-document)
-      :init (unbind-key "C-c e"))
-
     (use-package ace-jump-mode
+      :ensure t
       :bind ("M-o" . ace-jump-mode))
 
     (use-package ace-window
-      :bind ("M-o" . ace-window))
+      :ensure t
+      :bind ("M-p" . ace-window))
 
-    (use-package clojure-mode)
+    (use-package clojure-mode
+      :ensure t)
 
     (use-package paredit
-      :init
+      :ensure t
+      :config
       (dolist (x '(scheme emacs-lisp lisp clojure))
         (add-hook
          (intern (concat (symbol-name x) "-mode-hook")) 'paredit-mode))
-      :bind ("M-<right>" . paredit-forward-slurp-sexp)
-            ("M-<left>" . paredit-forward-barf-sexp))
+      :bind (("M-<right>" . paredit-forward-slurp-sexp)
+             ("M-<left>" . paredit-forward-barf-sexp)))
 
     (use-package web-mode
+      :ensure t
       :mode (("\\.phtml\\'" . web-mode)
              ("\\.jsx\\'" . web-mode)
+             ("\\.tsx\\'" . web-mode)
              ("\\.tpl\\.php\\'" . web-mode)
              ("\\.jsp\\'" . web-mode)
              ("\\.as[cp]x\\'" . web-mode)
@@ -236,7 +170,8 @@
       (bind-keys :map web-mode-map ("C-c /" . web-mode-element-close)))
 
     (use-package smart-mode-line
-      :init
+      :ensure t
+      :config
       (setq sml/no-confirm-load-theme t)
       (sml/setup)
       (add-to-list 'sml/replacer-regexp-list '("^~/workspace/" ":W:") t)
@@ -250,80 +185,64 @@
       (add-to-list 'sml/hidden-modes " ivy")
       (add-to-list 'sml/hidden-modes " Projectile"))
 
-    (use-package company
-      :init
-      (global-company-mode t)
-      :config
-      (setq company-idle-delay 0))
-
-    (use-package company-box
-      :hook (company-mode . company-box-mode))
-
     (use-package ag
+      :ensure t
       :bind ("<f2>" . ag-project)
-      :init (setq ag-highlight-search t))
+      :config
+      (setq ag-highlight-search t))
 
     (use-package visual-regexp
+      :ensure t
       :bind (("C-c q" . vr/query-replace)
              ("C-c r" . vr/replace)
              ("s-c" . vr/mc-mark)))
 
     (use-package browse-kill-ring
+      :ensure t
       :bind ("C-M-y" . browse-kill-ring))
 
-    (use-package undo-tree-mode
-      :ensure undo-tree
-      :init (global-undo-tree-mode)
+    (use-package undo-tree
+      :ensure t
+      :init
+      (global-undo-tree-mode 1)
       :bind (("C-x C-u" . undo-tree-undo)
              ("C-x C-r" . undo-tree-redo))
       :config
-      ;; autosave the undo-tree history
       (setq undo-tree-history-directory-alist
             `((".*" . ,temporary-file-directory)))
       (setq undo-tree-auto-save-history t))
 
-    (use-package yasnippet
-      :init
-      ;; (yas-reload-all)
-      (setq yas-snippet-dirs
-          '("~/.emacs.d/snippets"))
-      (add-hook 'GFM-mode #'yas-minor-mode)
-      :bind
-      ("C-<tab>" . yas-expand))
-
     (use-package haskell-mode
+      :ensure t
       :mode "\\.hs\\'"
-      :init
-      (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation))
+      :hook (haskell-mode . turn-on-haskell-indentation))
 
     (use-package magit
+      :ensure t
       :bind ("C-x g" . magit-status)
       :config
-      ;; https://github.com/magit/magit/issues/1953
-      (setq magit-restore-window-configuration t) ;; the default
-      (setq magit-status-buffer-switch-function
-            (lambda (buffer)
-              (pop-to-buffer buffer)
-              (delete-other-windows))))
+      (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1))
 
-    (use-package git-timemachine)
+
+    (use-package git-timemachine
+      :ensure t)
 
     (use-package projectile
+      :ensure t
       :bind ("s-p" . projectile-commander)
-      :init
-      (progn
-        (projectile-global-mode)
-        (setq projectile-mode-line
-              '(:eval (format " @:%s" (projectile-project-name))))))
+      :config
+      (projectile-mode +1)
+      (setq projectile-mode-line-prefix " @:")
+      (setq projectile-mode-line-function '(lambda () (format " @:%s" (projectile-project-name)))))
 
     (use-package rainbow-delimiters
-      :init
-      (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
+      :ensure t
+      :hook (prog-mode . rainbow-delimiters-mode))
   #+END_SRC
 
   Finally we quick'n'dirtily set some little text modes.
 
-  #+name: modes
+  #+name: modes-el
   #+BEGIN_SRC emacs-lisp
     (defvar ihodes/text-modes
       '(("\\.avpr?\\'" . js-mode)
@@ -334,15 +253,11 @@
 
     (dolist (mm ihodes/text-modes)
       (add-to-list 'auto-mode-alist mm))
-  #+END_SRC
 
-  (And some misc. additional code...)
-
-  #+name: modes
-  #+BEGIN_SRC emacs-lisp
     ;; https://github.com/purcell/exec-path-from-shell
     (use-package exec-path-from-shell
-      :init
+      :ensure t
+      :config
       (when (memq window-system '(mac ns))
         (exec-path-from-shell-initialize)))
 
@@ -361,38 +276,15 @@ them.
 
 #+name: journaling
 #+BEGIN_SRC emacs-lisp
-  (use-package mmm-mode
-    :init
-    ;; from http://jblevins.org/log/mmm
-    (defun mmm-markdown-auto-class (lang &optional submode)
-      "Define a mmm-mode class for LANG in `markdown-mode' using SUBMODE.
-         If SUBMODE is not provided, use `LANG-mode' by default."
-      (let ((class (intern (concat "gfm-" lang)))
-            (submode (or submode (intern (concat lang "-mode"))))
-            (front (concat "^```" lang "[\n\r]+"))
-            (back "^```$"))
-        (mmm-add-classes (list (list class :submode submode :front front :back back)))
-        (mmm-add-mode-ext-class 'gfm-mode nil class)))
-    (mapc 'mmm-markdown-auto-class
-          '("awk" "bibtex" "c" "cpp" "css" "html" "latex" "lisp" "elisp" "makefile"
-            "markdown" "python" "r" "ruby" "sql" "stata" "xml" "clojure" "scheme"
-            "js" "ruby"))
-    (mmm-markdown-auto-class "shell" 'shell-script-mode)
-    ;; TODO: this is an error
-    ;;       (mmm-markdown-auto-class "ocaml" 'tuareg-mode)
-    (mmm-markdown-auto-class "javascript" 'js-mode)
-    (add-hook 'markdown-mode-hook 'mmm-mode)
-    (setq mmm-parse-when-idle 't))
-
   (use-package markdown-mode
-    :load-path "~/workspace/markdown-mode"
+    :ensure t
     :bind
     (:map markdown-mode-map
           ("C-c >" .  org-time-stamp)
           ("C-c <" .  org-date-from-calendar)
           ("C-c m" . mmm-parse-buffer)
           ("C-c j" . ihodes/hydra/start-new-journal-entry/body))
-    :init
+    :config
     (defun s-trim-right (s)
       "Remove whitespace at the end of S."
       (if (string-match "[ \t\n\r]+\\'" s)
@@ -412,120 +304,32 @@ them.
     (require 'semantic/sb)                ; so that we can use CEDET's setq-mode-local
     (setq-mode-local markdown-mode show-trailing-whitespace nil))
 
-  (use-package deft
-    :load-path "~/workspace/deft/"
-    :bind
-    (("<f7>" . ihodes/hydra/add-note/body)
-     ("<f8>" . deft)
-     ("<f9>" . ihodes/edit-work-week-note)
-     ("<f10>" . ihodes/edit-personal-week-note)
-     ("<f12>" . ihodes/edit-current-months-journal)
-     ("C-c C-r" . revert-buffer) ;; used to reload buffer, if e.g. Dropbox edits it.
-     :map deft-mode-map
-     ("C-c C-j" . ihodes/deft-toggle-journal)
-     ("C-c C-w" . ihodes/deft-toggle-work)
-     ("C-c C-n" . ihodes/deft-toggle-notes))
-    :init
-    (setq ihodes/deft-name-map
-          '(("journal" . "db/journal/")
-            ("work" . "db/work/")
-            ("notes" . "db/notes/")))
-    (setq ihodes/deft-ignore-file-directories '("journal"))
-    (defun ihodes/update-deft-ignore-file-regexp ()
-      (interactive)
-      (let* ((deft-res-list
-               (mapcar (lambda (spec)
-                         (if (member (car spec) ihodes/deft-ignore-file-directories)
-                             (cdr spec) nil)) ihodes/deft-name-map))
-             (deft-res-list (cl-remove-if-not 'identity deft-res-list)))
-        (if deft-res-list
-            (setq deft-ignore-file-regexp (mapconcat 'identity deft-res-list "\\|"))
-          (setq deft-ignore-file-regexp "\\(?:^$\\)")))
-      (deft-refresh))
-    (defun ihodes/toggle-index-category (name)
-      "Shows/hides a category in Deft."
-      (interactive)
-      (if (member name ihodes/deft-ignore-file-directories)
-          (let ((ls (cl-remove-if (lambda (s) (string= s name)) ihodes/deft-ignore-file-directories)))
-            (setq ihodes/deft-ignore-file-directories ls))
-        (let ((ls (cons name ihodes/deft-ignore-file-directories)))
-          (setq ihodes/deft-ignore-file-directories ls)))
-      (ihodes/update-deft-ignore-file-regexp))
-    (defun ihodes/deft-toggle-journal () (interactive) (ihodes/toggle-index-category "journal"))
-    (defun ihodes/deft-toggle-work () (interactive) (ihodes/toggle-index-category "work"))
-    (defun ihodes/deft-toggle-notes () (interactive) (ihodes/toggle-index-category "notes"))
-    (defun ihodes/add-custom-note (subdirectory)
-      (let ((note-name
-             (read-file-name "What should the title be? " subdirectory)))
-        (find-file note-name)))
-    (defun ihodes/edit-work-week-note () (interactive) (ihodes/edit-current-weeks-note "~/text/db/work/"))
-    (defun ihodes/edit-personal-week-note () (interactive) (ihodes/edit-current-weeks-note "~/text/db/notes/"))
-    (defun ihodes/last-monday ()
-      "Return the previous Monday as a time value, or current day, if today is Monday."
-      (let* ((dow (nth 6 (decode-time)))
-             (delta (% (+ dow 6) 7))
-             (days-delta (seconds-to-time (* delta 24 60 60 ))))
-        (time-subtract (current-time) days-delta)))
-    (defun ihodes/edit-current-weeks-note (directory)
-      "Edit the note for the current week, starting on Monday, in
-      the given directory"
-      (interactive "DDeft Subdirectory: ")
-      (let* ((new-time (ihodes/last-monday))
-             (date (format-time-string "%Y-%m-%d" new-time))
-             (filename (concat date ".md"))
-             (path (concat directory filename)))
-        (find-file path)
-        (if (file-exists-p path)
-            t
-          (insert "# Monday\n\n# Tuesday\n\n# Wednesday\n\n# Thursday\n\n# Friday\n\n"))))
-    (defun ihodes/edit-current-months-journal ()
-      "Edit the journal text in ~/text/db/journal for the current month."
-      (interactive)
-      (let* ((date (format-time-string "%Y-%m"))
-             (filename (concat date ".md"))
-             (path (concat deft-directory "/db/journal/" filename)))
-        (find-file path)))
-    (setq deft-auto-save-interval 0)
-    (setq deft-directory "~/text")
-    (setq deft-use-filename-as-title t)
-    (setq deft-prefix-filename-title-with-subdirectory t)
-    (setq deft-extensions '("md" "txt" "tex" "org" "markdown"))
-    (setq deft-recursive t))
-
   (use-package visual-fill-column
-    :init
+    :ensure t
+    :config
     (setq fill-column 80)
     (defun ihodes/activate-visual-line-mode-for-notes ()
       "Activate soft line-wrapping when inside a text file that can
       be read in Dropbox; this lets us view them nicely on a mobile
       device as well as on desktop."
-      (when (and (string-match "text/" (buffer-file-name))
-                 (string-match "\\.md\\'" (buffer-file-name)))
+      (when (and buffer-file-name
+                 (string-match "text/" buffer-file-name)
+                 (string-match "\\.md\\'" buffer-file-name))
         (progn (visual-fill-column-mode t)
                (visual-line-mode t)
                (adaptive-wrap-prefix-mode t))))
     (add-hook 'find-file-hook 'ihodes/activate-visual-line-mode-for-notes))
 
-  (use-package adaptive-wrap)
+  (use-package adaptive-wrap
+    :ensure t)
 #+END_SRC
 
 ** Org
 
 Very rudimentary customization of ~org-mode~.
 
-Primarily we set our [[http://mobileorg.ncogni.to/][MobileOrg]] directory so that we can sync with the iPhone (or
-Android!) app. We also enable support for a variety of languages.
-
 #+name: org-mode
 #+BEGIN_SRC emacs-lisp
-  (bind-key "C-c c" 'org-capture)
-  (bind-key "C-c a" 'org-agenda)
-
-  (setq org-directory "~/org/")
-  (setq org-default-notes-file "~/org/notes.org")
-  (setq org-mobile-directory "~/Dropbox/Apps/MobileOrg")
-
-
   (setq org-src-fontify-natively nil)
 
   (setq org-modules '(org-info
@@ -541,177 +345,102 @@ Android!) app. We also enable support for a variety of languages.
       (message (org-element-property :link map))))
 
   (use-package org
+    :ensure t
     :bind
-    ("C-c i" . ispell)
-    ("M-I" . org-toggle-inline-images)
-    ("M-i" . org-toggle-inline-image)
-    ("C-M-c" . ihodes/org-link-at-point))
+    (("C-c i" . ispell)
+     ("M-I" . org-toggle-inline-images)
+     ("M-i" . org-toggle-image-in-org)
+     ("C-M-c" . ihodes/org-link-at-point)))
+
+  ;; Define org-toggle-image-in-org as a replacement for org-toggle-inline-image
+  (defun org-toggle-image-in-org ()
+    "Toggle the image at point."
+    (interactive)
+    (let ((context (org-element-context)))
+      (when (eq (org-element-type context) 'link)
+        (org-toggle-inline-images))))
 
 #+END_SRC
 
-This lets us drag'n'drop image links into org-mode.
-
-#+name: org-mode
-#+BEGIN_SRC emacs-lisp
-(defun my-dnd-func (event)
-  (interactive "e")
-  (goto-char (nth 1 (event-start event)))
-  (x-focus-frame nil)
-  (let* ((payload (car (last event)))
-         (type (car payload))
-         (fname (cadr payload))
-         (img-regexp "\\(png\\|jp[e]?g\\)\\>"))
-    (cond
-     ;; insert image link
-     ((and  (eq 'drag-n-drop (car event))
-            (eq 'file type)
-            (string-match img-regexp fname))
-      (insert (format "[[%s]]" fname))
-      (org-display-inline-images t t))
-     ;; insert image link with caption
-     ((and  (eq 'C-drag-n-drop (car event))
-            (eq 'file type)
-            (string-match img-regexp fname))
-      (insert "#+ATTR_ORG: :width 300\n")
-      (insert (concat  "#+CAPTION: " (read-input "Caption: ") "\n"))
-      (insert (format "[[%s]]" fname))
-      (org-display-inline-images t t))
-     ;; C-drag-n-drop to open a file
-     ((and  (eq 'C-drag-n-drop (car event))
-            (eq 'file type))
-      (find-file fname))
-     ((and (eq 'M-drag-n-drop (car event))
-           (eq 'file type))
-      (insert (format "[[attachfile:%s]]" fname)))
-     ;; regular drag and drop on file
-     ((eq 'file type)
-      (insert (format "[[%s]]\n" fname)))
-     (t
-      (error "I am not equipped for dnd on %s" payload)))))
-
-(define-key org-mode-map (kbd "<drag-n-drop>") 'my-dnd-func)
-(define-key org-mode-map (kbd "<C-drag-n-drop>") 'my-dnd-func)
-(define-key org-mode-map (kbd "<M-drag-n-drop>") 'my-dnd-func)
-#+END_SRC
-
-** Python settings
-
-This lets us use the iPython kernel as the inferior Python process.
-
-  #+name: modes
-  #+BEGIN_SRC emacs-lisp
-    ;; (setq python-shell-interpreter "ipython"
-    ;;       python-shell-prompt-regexp "In \\[[0-9]+\\]: "
-    ;;       python-shell-prompt-output-regexp "Out \\[[0-9]+\\]: "
-    ;;       python-shell-completion-setup-code
-    ;;       "from IPython.core.completerlib import module_completion"
-    ;;       python-shell-completion-module-string-code
-    ;;       "';'.join(module_completion('''%s'''))\n"
-    ;;       python-shell-completion-string-code
-    ;;       "';'.join(get_ipython().Completer.all_completions('''%s'''))\n")
-  #+END_SRC
-
-Some simple EIN customizations.
-
-  #+name: modes
-  #+BEGIN_SRC emacs-lisp
-    ;; (setq ein:use-auto-complete 1)
-    ;; (setq ein:console-args '("--gui=osx" "--matplotlib=osx" "--colors=Linux"))
-
-    ;; (defun ein:load-notebooks ()
-    ;;   (interactive)
-    ;;   (ein:notebooklist-load)
-    ;;   (ein:notebooklist-open))
-  #+END_SRC
 ** Javascript / Typescript
-  #+name: modes
+  #+name: modes-ts
   #+BEGIN_SRC emacs-lisp
-    (require 'web-mode)
+    ;; TypeScript support
+    (use-package typescript-mode
+      :ensure t
+      :mode "\\.ts\\'")
+
+    ;; Add TypeScript to web-mode
     (add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode))
   #+END_SRC
+
 ** Clojure settings
 
 Clojure-mode is useful for ~.edn~, ~.cljs~, and ~.cljx~ files as well.
 
-  #+name: modes
+  #+name: modes-cl
   #+BEGIN_SRC emacs-lisp
     (dolist (mm '(("\\.edn\\'" . clojure-mode)
                   ("\\.cljs\\'" . clojure-mode)
                   ("\\.cljx\\'" . clojure-mode)))
       (add-to-list 'auto-mode-alist mm))
-  #+END_SRC
 
-We make the [[https://github.com/clojure-emacs/cider][Cider]] (Clojure IDE) experience a bit better.
-
-  #+name: modes
-  #+BEGIN_SRC emacs-lisp
-    (require 'clojure-mode)
-    (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
-    (add-hook 'cider-repl-mode-hook 'paredit-mode)
-    (setq nrepl-hide-special-buffers t)
-    (setq cider-auto-select-error-buffer t)
+    ;; CIDER - the Clojure Interactive Development Environment
+    (use-package cider
+      :ensure t
+      :defer t
+      :config
+      (add-hook 'cider-mode-hook 'eldoc-mode)
+      (add-hook 'cider-repl-mode-hook 'paredit-mode)
+      (setq nrepl-hide-special-buffers t)
+      (setq cider-auto-select-error-buffer t))
   #+END_SRC
 
 Some common Clojure functions look better with different indentation, so we set
 those here.
 
-  #+name: modes
+  #+name: modes-el2
   #+BEGIN_SRC emacs-lisp
-    (define-clojure-indent
-      (defroutes 'defun)
-      (GET 2)
-      (POST 2)
-      (PUT 2)
-      (DELETE 2)
-      (HEAD 2)
-      (ANY 2)
-      (context 2)
-      (form-to 1)
-      (match 1)
-      (are 2)
-      (select 1)
-      (insert 1)
-      (update 1)
-      (delete 1)
-      (run* 1)
-      (fresh 1)
-      (extend-freeze 2)
-      (extend-thaw 1))
+    (use-package clojure-mode
+      :ensure t
+      :config
+      (define-clojure-indent
+        (defroutes 'defun)
+        (GET 2)
+        (POST 2)
+        (PUT 2)
+        (DELETE 2)
+        (HEAD 2)
+        (ANY 2)
+        (context 2)
+        (form-to 1)
+        (match 1)
+        (are 2)
+        (select 1)
+        (insert 1)
+        (update 1)
+        (delete 1)
+        (run* 1)
+        (fresh 1)
+        (extend-freeze 2)
+        (extend-thaw 1)))
   #+END_SRC
-** Scala settings
 
-   #+name: modes
-   #+BEGIN_SRC emacs-lisp
-     (use-package ensime
-       :init
-       (progn
-         (add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
-         (setq ensime-sem-high-faces
-               '((var . (:foreground "#ff2222"))
-                 (val . (:foreground "#dddddd"))
-                 (varField . (:foreground "#ff3333"))
-                 (valField . (:foreground "#dddddd"))
-                 (functionCall . (:foreground "#84BEE3"))
-                 (param . (:foreground "#ffffff"))
-                 (class . font-lock-type-face)
-                 (trait . (:foreground "#084EA8"))
-                 (object . (:foreground "#026DF7"))
-                 (package . font-lock-preprocessor-face)))))
-   #+END_SRC
-** Coq
-   #+name: coq-mode
-   #+BEGIN_SRC emacs-lisp
-     ;; (load-file "/usr/local/share/emacs/site-lisp/proof-general/site-start.d/pg-init.el")
-     ;; (autoload 'coq-mode "coq" "Major mode for editing Coq vernacular." t)
-     ;; (setq auto-mode-alist (cons '("\\.v$" . coq-mode) auto-mode-alist))
-     ;; (eval-after-load 'coq-mode '(define-key coq-mode-map (kbd "C-c C-.") 'proof-goto-point))
-   #+END_SRC
 ** Misc
-   #+name: modes
+   #+name: misc
    #+BEGIN_SRC emacs-lisp
      ;; annoying autocompile for scss is turned off
-     (setq scss-compile-at-save nil)
+     (use-package scss-mode
+       :ensure t
+       :config
+       (setq scss-compile-at-save nil))
+
+     ;; YAML mode
+     (use-package yaml-mode
+       :ensure t
+       :mode "\\.ya?ml\\'")
    #+END_SRC
+
 * Gittit
   ~gittit~ is a little library I wrote to connect local files to GitHub repos.
 
@@ -770,7 +499,7 @@ those here.
         (kill-new url)
         (message url)
         url))
-
+p
     (defun browse-github-url-for-line (filename start &optional end)
       "Navigate to the GitHub URL for FILENAME between START and optionally END."
       (interactive (cons (buffer-file-name)
@@ -782,6 +511,7 @@ those here.
   #+END_SRC
 
   Under the [[http://www.apache.org/licenses/LICENSE-2.0.html][Apache 2.0 License]].
+
 * Misc. Functions
 
   A bunch of little utility functions created here and elsewhere.
@@ -879,7 +609,6 @@ those here.
                ("C-c M-w" . whitespace-mode)
                ("M-j" . (lambda () (interactive) (join-line -1)))
                ("C-x t" . (lambda () (interactive) (insert "TODO(ihodes): ")))
-               ("M-s-≥" . mc/mark-next-lines)
                ("C-x w" . delete-trailing-whitespace)
                ("C-x C-d" . ido-dired)
                ("C-c C-e" . eval-buffer)
@@ -892,7 +621,7 @@ those here.
 
     (define-key 'help-command "A" #'apropos) ;; (C-h a)
 
-    (eval-after-load #'comint-mode-hook
+    (eval-after-load 'comint-mode-hook
       '(progn
          (define-key comint-mode-map (kbd "C-c C-t") 'comint-truncate-buffer)))
 
@@ -900,62 +629,7 @@ those here.
     (global-set-key [remap move-beginning-of-line]
                     'smarter-move-beginning-of-line)
   #+END_SRC
-* Projects
 
-This is a simple & hacky way to start asynchronous processes associated with
-projects I frequently work on.
-
-** TODO Manage a list of processes per project, and commands for restarting them etc. Upstart?
-** CycleDash
-  Found on [[https://github.com/hammerlab/cycledash][GitHub]].
-
-  This is deprecated, keeping it here for my own reference.
-  #+name: projects
-  #+BEGIN_SRC emacs-lisp
-    (defun cycledash:start-server ()
-      "Start the CycleDash server."
-      (interactive)
-      (async-shell-command "cd ~/workspace/cycledash/ && source venv/bin/activate && ./run.sh"
-                           "*CycleDash:./run.sh*"))
-
-    (defun cycledash:start-worker ()
-      "Start a CycleDash worker named WORK."
-      (interactive)
-      (async-shell-command "cd ~/workspace/cycledash/ && source venv/bin/activate && ./worker.sh WORK"
-                           "*CycleDash:./worker.sh*"))
-
-    (defun cycledash:start-gulp ()
-      "Start the gulp dev js builder."
-      (interactive)
-      (async-shell-command "cd ~/workspace/cycledash/ && gulp"
-                           "*CycleDash: gulp*"))
-
-    (defun cycledash:start ()
-      "Start all cycledash services"
-      (interactive)
-      (dolist (start '(cycledash:start-server cycledash:start-worker cycledash:start-gulp))
-        (funcall start)))
-
-    (defun cycledash:python-tests ()
-      "Run the Python tests"
-      (interactive)
-      (async-shell-command "cd ~/workspace/cycledash/ && source venv/bin/activate && source ENV.sh && nosetests tests/python"
-                           "*CycleDash: python nosetests*"))
-
-    (defun rgc:start-server ()
-      "Start the RGC Harvest server."
-      (interactive)
-      (async-shell-command "cd ~/workspace/rgc/rgc-site/ && source venv/bin/activate && ./bin/manage.py runserver 8080"
-                           "*Harvest: runserver 8080*"))
-
-    (defun healthtracker:start-server ()
-      "Start the Healthtracker server."
-      (interactive)
-      (async-shell-command "cd ~/workspace/healthtracker/ && source venv/bin/activate && source env.sh && python run.py"
-                           "*Healthtracker: run.py 5050*"))
-
-
-  #+END_SRC
 * Configuration file layout
 
   Here I define the ~emacs.el~ file generated by the code in this org file.
@@ -966,18 +640,19 @@ projects I frequently work on.
   #+BEGIN_SRC emacs-lisp :tangle yes :noweb no-export :exports code
     ;;;; This file generated from `emacs.org` in this directory.
 
-    <<init>>
     <<prelude>>
-    <<look-and-feel>>
     <<packages>>
+    <<look-and-feel>>
     <<modes>>
-    <<coq-mode>>
+    <<modes-el>>
+    <<modes-el2>>
+    <<modes-cl>>
+    <<modes-ts>>
+    <<misc>>
     <<org-mode>>
     <<functions>>
     <<defaults>>
     <<gittit>>
     <<bindings>>
     <<journaling>>
-    <<projects>>
   #+END_SRC
-
