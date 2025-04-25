@@ -9,7 +9,7 @@
   checked into the public repo.
 
   #+name: prelude
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (defun read-string-from-file (path)
       "Return filePath's file content as a lisp form."
       (with-temp-buffer
@@ -24,7 +24,7 @@
   in `init.el`.
 
   #+name: packages
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (require 'use-package)
     (setq use-package-always-ensure t)
   #+END_SRC
@@ -35,12 +35,12 @@
   First things first, let's make emacs pretty.
 
   #+name: look-and-feel
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     ;; Install theme if not already installed
     (use-package material-theme
-      :ensure t)
+      :ensure t
+      :init (load-theme 'material t))
 
-    (load-theme 'material t)
     (setq ihodes/dark-theme 'solarized-dark)
     (setq ihodes/light-theme 'solarized-light)
     (defun ihodes/toggle-theme ()
@@ -73,7 +73,7 @@
   editor.
 
   #+name: defaults
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (column-number-mode t)
     (setq compilation-scroll-output t)
     (setq kill-ring-max 500)
@@ -106,10 +106,11 @@
 
 ** Main
   #+name: modes
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (use-package vertico
       :ensure t
-      :init
+      :demand t
+      :config
       (vertico-mode))
 
     (use-package orderless
@@ -135,7 +136,7 @@
       :ensure t
       :bind
       (:map minibuffer-local-map
-       ("M-o" . embark-act)))
+            ("M-o" . embark-act)))
 
     (use-package embark-consult
       :ensure t
@@ -144,9 +145,9 @@
     (defun ihodes/set-exec-path-from-shell-PATH ()
       "Set up Emacs' `exec-path' and PATH environment variable to match that used by the user's shell.
 
-            This is particularly useful under Mac OSX, where GUI apps are not started from a shell.
+                  This is particularly useful under Mac OSX, where GUI apps are not started from a shell.
 
-            from http://stackoverflow.com/questions/8606954/path-and-exec-path-set-but-emacs-does-not-find-executable"
+                  from http://stackoverflow.com/questions/8606954/path-and-exec-path-set-but-emacs-does-not-find-executable"
       (interactive)
       (let ((path-from-shell (replace-regexp-in-string "[ \t\n]*$" "" (shell-command-to-string "$SHELL --login -i -c 'echo $PATH'"))))
         (setenv "PATH" path-from-shell)
@@ -160,15 +161,14 @@
       :ensure t
       :bind ("M-p" . ace-window))
 
-    (use-package clojure-mode
-      :ensure t)
-
     (use-package paredit
       :ensure t
-      :config
-      (dolist (x '(scheme emacs-lisp lisp clojure))
-        (add-hook
-         (intern (concat (symbol-name x) "-mode-hook")) 'paredit-mode))
+      :hook ((scheme-mode
+              lisp-mode
+              emacs-lisp-mode
+              clojure-mode
+              lisp-interaction-mode
+              eval-expression-minibuffer-setup) . paredit-mode)
       :bind (("M-<right>" . paredit-forward-slurp-sexp)
              ("M-<left>" . paredit-forward-barf-sexp)))
 
@@ -215,6 +215,8 @@
       :config
       (setq ag-highlight-search t))
 
+
+
     (use-package visual-regexp
       :ensure t
       :bind (("C-c q" . vr/query-replace)
@@ -230,7 +232,7 @@
       :config
       (setq undo-tree-history-directory-alist
             `((".*" . ,temporary-file-directory)))
-      (setq undo-tree-auto-save-history t))
+            (setq undo-tree-auto-save-history t))
 
     (use-package haskell-mode
       :ensure t
@@ -258,12 +260,34 @@
     (use-package rainbow-delimiters
       :ensure t
       :hook (prog-mode . rainbow-delimiters-mode))
+
+    (use-package yasnippet :ensure t)
+
+    (use-package lsp-bridge
+      :after (markdown-mode yasnippet)
+      :init (yas-global-mode 1)
+      :ensure '(lsp-bridge
+                :host github
+                :repo "manateelazycat/lsp-bridge"
+                :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources" "icons")
+                :build (:not compile))
+      :config
+      (defun enable-lsp-bridge ()
+        (interactive)
+        (when-let* ((project (project-current))
+                    (project-root (nth 2 project)))
+          (setq-local lsp-bridge-user-langserver-dir project-root
+                      lsp-bridge-user-multiserver-dir project-root))
+        (global-lsp-bridge-mode))
+      (enable-lsp-bridge)
+      (setq lsp-bridge-python-command "python3")
+      (setq lsp-bridge-python-lsp-server "jedi"))
   #+END_SRC
 
   Finally we quick'n'dirtily set some little text modes.
 
   #+name: modes-el
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (defvar ihodes/text-modes
       '(("\\.avpr?\\'" . js-mode)
         ("\\.avdl?\\'" . c-mode)
@@ -295,7 +319,7 @@ so that I can pick up my modifications to these libraries as soon as I need
 them.
 
 #+name: journaling
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :tangle no
   (use-package markdown-mode
     :ensure t
     :bind
@@ -349,13 +373,8 @@ them.
 Very rudimentary customization of ~org-mode~.
 
 #+name: org-mode
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :tangle no
   (setq org-src-fontify-natively nil)
-
-  (setq org-modules '(org-info
-                      org-habit))
-
-  (org-load-modules-maybe t)
 
   (defun ihodes/org-link-at-point ()
     "Return the link of the org-link at point."
@@ -365,7 +384,7 @@ Very rudimentary customization of ~org-mode~.
       (message (org-element-property :link map))))
 
   (use-package org
-    :ensure t
+    :ensure nil
     :bind
     (("C-c i" . ispell)
      ("M-I" . org-toggle-inline-images)
@@ -384,7 +403,7 @@ Very rudimentary customization of ~org-mode~.
 
 ** Javascript / Typescript
   #+name: modes-ts
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     ;; TypeScript support
     (use-package typescript-mode
       :ensure t
@@ -399,7 +418,7 @@ Very rudimentary customization of ~org-mode~.
 Clojure-mode is useful for ~.edn~, ~.cljs~, and ~.cljx~ files as well.
 
   #+name: modes-cl
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (dolist (mm '(("\\.edn\\'" . clojure-mode)
                   ("\\.cljs\\'" . clojure-mode)
                   ("\\.cljx\\'" . clojure-mode)))
@@ -420,7 +439,7 @@ Some common Clojure functions look better with different indentation, so we set
 those here.
 
   #+name: modes-el2
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (use-package clojure-mode
       :ensure t
       :config
@@ -448,7 +467,7 @@ those here.
 
 ** Misc
    #+name: misc
-   #+BEGIN_SRC emacs-lisp
+   #+BEGIN_SRC emacs-lisp :tangle no
 
      ;; YAML mode
      (use-package yaml-mode
@@ -462,7 +481,7 @@ those here.
   These are our utility functions.
 
   #+name: gittit
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (defun gittit:base-github-url ()
       (let* ((git-url (shell-command-to-string "git config --get remote.origin.url"))
              (http-url (replace-regexp-in-string "git@" "" git-url))
@@ -498,8 +517,8 @@ those here.
 
   These are the public exports:
 
-  #+name: gittit
-  #+BEGIN_SRC emacs-lisp
+  #+name: gittit2
+  #+BEGIN_SRC emacs-lisp :tangle no
     (defun github-url-for-line  (filename start &optional end)
       "Returns, echoes, and kills the GitHub URL for FILENAME between START and optionally END."
       (interactive (cons (buffer-file-name)
@@ -531,7 +550,7 @@ those here.
 
   A bunch of little utility functions created here and elsewhere.
   #+name: functions
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (defun clear-shell-buffer ()
       "Clear the current buffer"
       (interactive)
@@ -616,7 +635,7 @@ those here.
   Global and some mode-specific bindings that need to be cleaned up.
 
   #+name: bindings
-  #+BEGIN_SRC emacs-lisp
+  #+BEGIN_SRC emacs-lisp :tangle no
     (bind-keys ("<f1>" . eshell)
                ("<f3>" . occur)
                ("<f5>" . calc)
@@ -649,38 +668,133 @@ those here.
 * AI stuff
 
 #+name: ai
-#+BEGIN_SRC emacs-lisp
-    (use-package gptel
-      :ensure t
-      :bind
-      ("M-l" . gptel-send)
-      ("M-r" . gptel-rewrite)
-      ("M-m" . gptel-menu)
-      ("C-c M-a" . gptel-add)
-      ("C-c M-f" . gptel-add-file)
-      ("C-c M-l" . gptel)
-      :config
-      (gptel-make-anthropic "claude" :stream t)
-      (gptel-make-gemini "Gemini" :stream t)
-      (add-hook 'gptel-post-stream-hook 'gptel-auto-scroll))
+#+BEGIN_SRC emacs-lisp :tangle no
+  (let ((anthropic-key (auth-source-pick-first-password
+                        :host "api.anthropic.com")))
+    (when anthropic-key
+      (setenv "ANTHROPIC_API_KEY" anthropic-key)))
 
-    (use-package transient
-      :ensure t)
 
-    (defun gptel-display-keybindings ()
-      "Display gptel keybindings in an interactive transient menu."
-      (interactive)
-      (transient-define-prefix gptel-transient-menu ()
-        ["GPTel Keybindings"
-         ("l" "Send (M-l)" gptel-send)
-         ("r" "Rewrite (M-r)" gptel-rewrite)
-         ("m" "Menu (M-m)" gptel-menu)
-         ("a" "Add (C-c M-a)" gptel-add)
-         ("f" "Add File (C-c M-f)" gptel-add-file)
-         ("g" "Gptel (C-c M-l)" gptel)])
-      (transient-setup 'gptel-transient-menu))
+  (use-package gptel
+    :ensure t
+    :bind
+    ("C-c g s" . gptel-send)
+    ;; ("C-c g e" . gptel-check-cost)
+    ("C-c g r" . gptel-rewrite)
+    ("C-c g m" . gptel-menu)
+    ("C-c g a a" . gptel-add)
+    ("C-c g a f" . gptel-add-file)
+    ("C-c g c" . gptel)
+    ("C-c g g" . gptel-display-keybindings)  ;; Updated keybinding to display keybindings
+    :config
+    (gptel-make-anthropic "claude" :stream t)
+    (gptel-make-gemini "Gemini" :stream t)
+    (add-hook 'gptel-post-stream-hook 'gptel-auto-scroll))
 
-    (global-set-key (kbd "C-c g") 'gptel-display-keybindings)
+  ;; Get Anthropic API key from ~/.authinfo
+  (defun gptel-get-anthropic-api-key ()
+    "Get Anthropic API key from auth-source."
+    (require 'auth-source)
+    (let ((auth-info (car (auth-source-search :host "api.anthropic.com"
+                                              :require '(:secret)))))
+      (when auth-info
+        (funcall (plist-get auth-info :secret)))))
+
+  (defun gptel-calculate-cost (prompt model)
+    "Calculate cost of PROMPT string using tokencost Python package for MODEL."
+    (let* ((temp-file (make-temp-file "gptel-prompt-")))
+      (with-temp-file temp-file
+        (insert prompt))
+      (let* ((python-command
+              (if (or (string-match "claude" model)
+                      (string-match "anthropic" model))
+                  (let ((api-key (gptel-get-anthropic-api-key)))
+                    (format "ANTHROPIC_API_KEY='%s' python3 -c \"
+  import tokencost;\
+  content = open('%s','r').read();\
+  messages = [{'role':'user','content':content}];\
+  cost = tokencost.calculate_prompt_cost(messages, '%s');\
+  print(cost)\" 2>&1"
+                            api-key temp-file model))
+                (format "python3 -c \"
+  import tokencost;\
+  content = open('%s','r').read();\
+  cost = tokencost.calculate_prompt_cost(content, '%s');\
+  print(cost)\" 2>&1"
+                        temp-file model)))
+             (output (shell-command-to-string python-command)))
+        (delete-file temp-file)
+        (message "Debug - Model: %s" model)
+        (message "Debug - Output: '%s'" output)
+        (let* ((lines (split-string output "[\n\r]+" t))
+               (last-line (car (last lines)))
+               (match (and last-line
+                           (string-match "\([0-9]+\(?:\.[0-9]+\)\)" last-line)
+                           (match-string 1 last-line))))
+          (if match
+              (string-to-number match)
+            (error "Failed to parse cost from output: %s" output))))))
+
+  ;; TODO: need a way to get the prompt, otherwise this doesn't estimate well.
+  (defun gptel-send-with-confirmation (start end &optional arg)
+    "Send query to GPT with cost estimation and user confirmation."
+    (interactive
+     (if (use-region-p)
+         (list (region-beginning) (region-end) current-prefix-arg)
+       (list (point-min) (point-max) current-prefix-arg)))
+    (let* ((raw-text       (buffer-substring-no-properties start end))
+           (model          (or gptel-model "claude-3-5-sonnet-20240620"))
+           (prompt         (gptel-build-full-prompt-from-text raw-text))
+           (estimated-cost (gptel-calculate-cost prompt model))
+           (cost-limit     0.03))         ; USD limit
+      (if (> estimated-cost cost-limit)
+          (when (yes-or-no-p
+                 (format "Estimated cost: $%.6f (limit $%.2f). Send anyway? "
+                         estimated-cost cost-limit))
+            (gptel-send start end arg))
+        (gptel-send start end arg)
+        (message "Query sent. Estimated cost: $%.6f" estimated-cost))))
+
+  (defun gptel-check-cost (start end)
+    "Estimate the cost of exactly the prompt gptel would send (with context)."
+    (interactive "r")
+    (let* ((raw-text (buffer-substring-no-properties start end))
+           (prompt   (gptel-build-full-prompt-from-text raw-text))
+           (model    (or gptel-model "claude-3-5-sonnet-20240620"))
+           (cost     (gptel-calculate-cost prompt model)))
+      (message "Estimated cost for this prompt: $%.6f" cost)))
+
+  (defun gptel-check-cost (start end)
+    "Estimate the cost of exactly the prompt gptel would send (with all context)."
+    (interactive "r")
+    (let* ((text        (buffer-substring-no-properties start end))
+           ;; temporarily yank it into a temp buffer so preview uses exactly that region
+           (prompt      (with-temp-buffer
+                          (insert text)
+                          (gptel-preview-prompt)    ; dumps the full prompt into *gptel-prompt*
+                          (with-current-buffer "*gptel-prompt*"
+                            (buffer-string))))
+           (model       (or gptel-model "claude-3-5-sonnet-20240620"))
+           (cost        (gptel-calculate-cost prompt model)))
+      (message "Estimated cost for this prompt: $%.6f" cost)))
+
+
+  (use-package transient
+    :ensure t)
+
+  (defun gptel-display-keybindings ()
+    "Display gptel keybindings in an interactive transient menu."
+    (interactive)
+    (transient-define-prefix gptel-transient-menu ()
+      ["GPTel Keybindings"
+       ("s" "Send (C-c g s)" gptel-send)
+       ;; ("e" "Estimate cost (C-c g e)" gptel-check-cost)
+       ("r" "Rewrite (C-c g r)" gptel-rewrite)
+       ("m" "Menu (C-c g m)" gptel-menu)
+       ("a" "Add (C-c g a a)" gptel-add)
+       ("f" "Add File (C-c g a f)" gptel-add-file)
+       ("g" "Gptel (C-c g c)" gptel)])
+    (transient-setup 'gptel-transient-menu))
 #+END_SRC
 
 * Configuration file layout
@@ -690,7 +804,7 @@ those here.
   The below block describes how the code above should be organized within the
   generated ~emacs.el~.
 
-  #+BEGIN_SRC emacs-lisp :tangle yes :noweb no-export :exports code
+  #+BEGIN_SRC emacs-lisp :noweb yes :tangle yes
     ;;;; This file generated from `emacs.org` in this directory.
 
     <<prelude>>
@@ -707,6 +821,7 @@ those here.
     <<functions>>
     <<defaults>>
     <<gittit>>
+    <<gittit2>>
     <<bindings>>
     <<journaling>>
     #+END_SRC
