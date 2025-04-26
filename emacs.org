@@ -273,6 +273,11 @@
                 :build (:not compile))
       :config
       (defun enable-lsp-bridge ()
+        ;; This finds the langserver.json config file at current project root
+        ;; (i.e. the dir where .git is) and uses that to configure and get the right
+        ;; paths. e.g. in ~/ihodes.github.io I have a jedi.json filej. This bypasses
+        ;; the challenges of workjing in venvs by just manually setting the venv's
+        ;; python instance and editing the path.
         (interactive)
         (when-let* ((project (project-current))
                     (project-root (nth 2 project)))
