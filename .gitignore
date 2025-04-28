@@ -15,3 +15,8 @@ ein-lisp/
 /var/
 /.mc-lists.el
 /locations.el
+/elpaca/
+/recentf
+/tramp
+/transient/
+/org-persist/
