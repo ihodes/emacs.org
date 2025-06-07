@@ -116,8 +116,8 @@
     (use-package orderless
       :ensure t
       :custom
-      (completion-styles '(orderless basic))
-      (completion-category-overrides '((file (styles basic partial-completion)))))
+      (orderless-matching-styles '(orderless-literal orderless-regexp orderless-initialism))
+      (completion-styles '(orderless basic)))
 
     (use-package marginalia
       :ensure t
@@ -248,7 +248,9 @@
       :ensure t
       :bind ("C-x g" . magit-status)
       :config
-      (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1))
+      (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1)
+      (setq ediff-split-window-function 'split-window-horizontally)
+      (setq ediff-window-setup-function 'ediff-setup-windows-plain))
 
     (use-package git-timemachine
       :ensure t)
@@ -329,53 +331,93 @@ them.
 
 #+name: journaling
 #+BEGIN_SRC emacs-lisp :tangle no
-  (use-package markdown-mode
-    :ensure t
-    :bind
-    (:map markdown-mode-map
-          ("C-c >" .  org-time-stamp)
-          ("C-c <" .  org-date-from-calendar)
-          ("C-c m" . mmm-parse-buffer)
-          ("C-c j" . ihodes/hydra/start-new-journal-entry/body)
-          ("M-p" . nil))
-    :config
-    (defun s-trim-right (s)
-      "Remove whitespace at the end of S."
-      (if (string-match "[ \t\n\r]+\\'" s)
-          (replace-match "" t t s)
-        s))
-    (custom-set-faces
-     '(markdown-header-face
-       ((t (:inherit font-lock-function-name-face
-            :weight bold :family "variable-pitch"))))
-     '(markdown-header-face-1 ((t (:inherit markdown-header-face :height 1.7))))
-     '(markdown-header-face-2 ((t (:inherit markdown-header-face :height 1.4))))
-     '(markdown-header-face-3 ((t (:inherit markdown-header-face :height 1.2)))))
-    (setq markdown-command "marked --gfm --tables --smart-lists --breaks")
-    (setq markdown-asymmetric-header t)
-    (setq markdown-gfm-additional-languages
-          '("ocaml" "python" "javascript" "js" "r" "java" "clojure" "scheme"))
-    (require 'semantic/sb)                ; so that we can use CEDET's setq-mode-local
-    (setq-mode-local markdown-mode show-trailing-whitespace nil))
-
   (use-package visual-fill-column
     :ensure t
     :config
-    (setq fill-column 80)
+    (setq visual-fill-column-width 80)
+    (setq visual-fill-column-center-text nil)
+    
+    ;; Create a more aggressive fix for visual-fill-column
+    (defun ihodes/reset-visual-fill-column (&optional _ignored)
+      "Hard reset visual-fill-column mode to ensure proper width.
+  The optional argument is ignored, allowing this to be used in hooks."
+      (when visual-fill-column-mode
+        (visual-fill-column-mode -1)
+        (setq-local visual-fill-column-width 80)
+        (visual-fill-column-mode 1)))
+    
+    ;; Connect our reset function to text scaling
+    (advice-add 'text-scale-adjust :after 'ihodes/reset-visual-fill-column)
+    
+    ;; Also connect it to window size changes
+    (add-hook 'window-size-change-functions 'ihodes/reset-visual-fill-column)
+    
+    ;; Our main function for setting up text files
     (defun ihodes/activate-visual-line-mode-for-notes ()
-      "Activate soft line-wrapping when inside a text file that can
-      be read in Dropbox; this lets us view them nicely on a mobile
-      device as well as on desktop."
+      "Activate soft line-wrapping when inside a text file."
+      (interactive)
       (when (and buffer-file-name
-                 (string-match "text/" buffer-file-name)
-                 (string-match "\\.md\\'" buffer-file-name))
-        (progn (visual-fill-column-mode t)
-               (visual-line-mode t)
-               (adaptive-wrap-prefix-mode t))))
-    (add-hook 'find-file-hook 'ihodes/activate-visual-line-mode-for-notes))
+                 (or (string-match "\\.txt\\'" buffer-file-name)
+                     (string-match "\\.md\\'" buffer-file-name)))
+        (visual-line-mode 1)
+        (adaptive-wrap-prefix-mode 1)
+        (setq-local visual-fill-column-width 80)
+        (visual-fill-column-mode 1)))
+    
+    (add-hook 'find-file-hook 'ihodes/activate-visual-line-mode-for-notes)
+    
+    ;; Make our manual trigger also use the fixed approach
+    :bind
+    ("C-c C-\\" . (lambda ()
+                    (interactive)
+                    (visual-line-mode 1)
+                    (adaptive-wrap-prefix-mode 1)
+                    (setq-local visual-fill-column-width 80)
+                    (visual-fill-column-mode -1)
+                    (visual-fill-column-mode 1))))
 
   (use-package adaptive-wrap
     :ensure t)
+
+
+
+  ;; Diagnostic function to understand what's happening
+  (defun ihodes/visual-fill-diagnostics ()
+    "Print diagnostic information about visual-fill-column."
+    (interactive)
+    (message "DIAGNOSTICS:")
+    (message "  Buffer: %s" (buffer-name))
+    (message "  visual-fill-column-mode active: %s" visual-fill-column-mode)
+    (message "  visual-fill-column-width: %s" visual-fill-column-width)
+    (message "  fill-column: %s" fill-column)
+    (message "  Text scale: %s" text-scale-mode-amount)
+    (message "  Window width: %s" (window-width))
+    (message "  Calculated width: %s" 
+             (if visual-fill-column-mode
+                 (visual-fill-column--window-max-text-width)
+               "Not calculated (mode inactive)")))
+
+  ;; Bind this to a key for testing
+  (global-set-key (kbd "C-c C-d") 'ihodes/visual-fill-diagnostics)
+
+
+  (defun ihodes/simple-visual-fill-fix (&rest _)
+    "Simple fix for visual-fill-column after text scaling."
+    (when visual-fill-column-mode
+      ;; First get current window width
+      (let ((current-window-width (window-width)))
+        ;; Ensure visual-fill-column doesn't exceed window width
+        (setq-local visual-fill-column-width 
+                    (min 80 (- current-window-width 5)))
+        ;; Force recalculation
+        (visual-fill-column-mode -1)
+        (visual-fill-column-mode 1))))
+
+  ;; Remove previous advice if it exists
+  (advice-remove 'text-scale-adjust #'ihodes/fix-visual-fill-column-after-text-scale)
+
+  ;; Add new advice
+  (advice-add 'text-scale-adjust :after #'ihodes/simple-visual-fill-fix)
 #+END_SRC
 
 ** Org
