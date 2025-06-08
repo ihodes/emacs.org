@@ -248,7 +248,16 @@
       :ensure t
       :bind ("C-x g" . magit-status)
       :config
-      (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1)
+      (setq magit-display-buffer-function
+            'magit-display-buffer-same-window-except-diff-v1)
+
+      (add-hook 'after-save-hook 'magit-after-save-refresh-status t)
+
+      (setq magit-log-section-commit-count 20)
+      (setq magit-log-arguments '("--graph" "--decorate" "--color"))
+      (setq magit-log-margin '(t age-abbreviated magit-log-margin-width t 18))
+      (setq magit-status-margin '(t age-abbreviated magit-log-margin-width t 18))
+
       (setq ediff-split-window-function 'split-window-horizontally)
       (setq ediff-window-setup-function 'ediff-setup-windows-plain))
 
@@ -336,7 +345,7 @@ them.
     :config
     (setq visual-fill-column-width 80)
     (setq visual-fill-column-center-text nil)
-    
+
     ;; Create a more aggressive fix for visual-fill-column
     (defun ihodes/reset-visual-fill-column (&optional _ignored)
       "Hard reset visual-fill-column mode to ensure proper width.
@@ -345,13 +354,13 @@ them.
         (visual-fill-column-mode -1)
         (setq-local visual-fill-column-width 80)
         (visual-fill-column-mode 1)))
-    
+
     ;; Connect our reset function to text scaling
     (advice-add 'text-scale-adjust :after 'ihodes/reset-visual-fill-column)
-    
+
     ;; Also connect it to window size changes
     (add-hook 'window-size-change-functions 'ihodes/reset-visual-fill-column)
-    
+
     ;; Our main function for setting up text files
     (defun ihodes/activate-visual-line-mode-for-notes ()
       "Activate soft line-wrapping when inside a text file."
@@ -363,9 +372,9 @@ them.
         (adaptive-wrap-prefix-mode 1)
         (setq-local visual-fill-column-width 80)
         (visual-fill-column-mode 1)))
-    
+
     (add-hook 'find-file-hook 'ihodes/activate-visual-line-mode-for-notes)
-    
+
     ;; Make our manual trigger also use the fixed approach
     :bind
     ("C-c C-\\" . (lambda ()
@@ -392,7 +401,7 @@ them.
     (message "  fill-column: %s" fill-column)
     (message "  Text scale: %s" text-scale-mode-amount)
     (message "  Window width: %s" (window-width))
-    (message "  Calculated width: %s" 
+    (message "  Calculated width: %s"
              (if visual-fill-column-mode
                  (visual-fill-column--window-max-text-width)
                "Not calculated (mode inactive)")))
@@ -407,7 +416,7 @@ them.
       ;; First get current window width
       (let ((current-window-width (window-width)))
         ;; Ensure visual-fill-column doesn't exceed window width
-        (setq-local visual-fill-column-width 
+        (setq-local visual-fill-column-width
                     (min 80 (- current-window-width 5)))
         ;; Force recalculation
         (visual-fill-column-mode -1)
