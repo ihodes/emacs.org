@@ -15,8 +15,9 @@
 (setq auto-revert-avoid-polling t)
 
 (setq-default show-trailing-whitespace t)
-(global-set-key (kbd "C-c w") 'delete-trailing-whitespace)
-
+(global-set-key (kbd "<f1>") 'delete-trailing-whitespace)
+(add-hook 'minibuffer-setup-hook (lambda () (setq-local show-trailing-whitespace nil)))
+(add-hook 'special-mode-hook (lambda () (setq-local show-trailing-whitespace nil)))
 
 ;; Bootstrap straight.el
 (defvar bootstrap-version)
@@ -32,21 +33,57 @@
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
+(use-package exec-path-from-shell
+  :straight t
+  :config
+  (exec-path-from-shell-initialize))
+
 ;; Install use-package and use straight.el by default
 (straight-use-package 'use-package)
 (setq straight-use-package-by-default t)
 
 (use-package diminish
-  :straight t
   :config
-  (diminish 'auto-revert-mode)
-  (diminish 'eldoc-mode)
-  (diminish 'visual-line-mode))
+  (with-eval-after-load 'eldoc (diminish 'eldoc-mode))
+  (with-eval-after-load 'autorevert (diminish 'auto-revert-mode))
+  (with-eval-after-load 'simple (diminish 'visual-line-mode))
+  (with-eval-after-load 'undo-tree (diminish 'undo-tree-mode))
+  (with-eval-after-load 'paredit (diminish 'paredit-mode)))
 
 (which-function-mode 1)
 (column-number-mode 1)
 (size-indication-mode 1)
+(repeat-mode 1)
 
+(use-package winner
+  :straight nil
+  :init (winner-mode 1)
+  :bind (("C-c <left>"  . winner-undo)
+         ("C-c <right>" . winner-redo))
+  :config
+  (defvar w/winner-repeat-map
+    (let ((map (make-sparse-keymap)))
+      (define-key map (kbd "<left>") 'winner-undo)
+      (define-key map (kbd "<right>") 'winner-redo)
+      map)
+    "Keymap to repeat `winner' key sequences.  Used in `repeat-mode'.")
+  (put 'winner-undo 'repeat-map 'w/winner-repeat-map)
+  (put 'winner-redo 'repeat-map 'w/winner-repeat-map))
+
+(use-package popper
+  :straight t
+  :bind (("C-`"   . popper-toggle)
+         ("M-`"   . popper-cycle)
+         ("C-M-`" . popper-toggle-type))
+  :init
+  (setq popper-reference-buffers
+        '("\\*Messages\\*"
+          "Output\\*$"
+          "\\*Async Shell Command\\*"
+          help-mode
+          compilation-mode))
+  (popper-mode +1)
+  (popper-echo-mode +1))
 
 ;; Packages
 
@@ -78,6 +115,14 @@
   (global-undo-tree-mode)
   :bind ("C-x C-u" . undo-tree-visualize))
 
+(use-package vterm
+  :straight t
+  :bind ("<f2>" . vterm)
+  :hook (vterm-mode . (lambda () (setq-local show-trailing-whitespace nil)))
+  :custom
+  (vterm-max-scrollback 10000)
+  (vterm-shell "/bin/zsh"))
+
 (use-package markdown-mode
   :hook ((markdown-mode . visual-line-mode)
          (markdown-mode . visual-fill-column-mode)))
@@ -100,9 +145,26 @@
          (typescript-mode . eglot-ensure))
   :custom
   (eglot-autoshutdown t)
-  (eglot-events-buffer-size 0)
   :config
-  (setq eglot-ignored-server-capabilities '(:inlayHintProvider)))
+  (setf (alist-get '(python-mode python-ts-mode) eglot-server-programs
+                   nil nil #'equal)
+        '("pyright-langserver" "--stdio")))
+
+(use-package python
+  :straight nil
+  :custom
+  (python-shell-interpreter "uv")
+  (python-shell-interpreter-args "run python")
+  :bind (:map python-mode-map
+         ("M-n" . python-nav-forward-defun)
+         ("M-p" . python-nav-backward-defun)))
+
+
+(use-package expand-region
+  :straight t
+  :bind
+  ("C-=" . er/expand-region)
+  ("C--" . er/contract-region))
 
 (use-package visual-fill-column
   :custom
