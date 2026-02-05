@@ -1,70 +1,123 @@
-(defvar elpaca-installer-version 0.11)
-(defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
-(defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
-(defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
-(defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
-                              :ref nil :depth 1 :inherit ignore
-                              :files (:defaults "elpaca-test.el" (:exclude "extensions"))
-                              :build (:not elpaca--activate-package)))
-(let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
-       (build (expand-file-name "elpaca/" elpaca-builds-directory))
-       (order (cdr elpaca-order))
-       (default-directory repo))
-  (add-to-list 'load-path (if (file-exists-p build) build repo))
-  (unless (file-exists-p repo)
-    (make-directory repo t)
-    (when (<= emacs-major-version 28) (require 'subr-x))
-    (condition-case-unless-debug err
-        (if-let* ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
-                  ((zerop (apply #'call-process `("git" nil ,buffer t "clone"
-                                                  ,@(when-let* ((depth (plist-get order :depth)))
-                                                      (list (format "--depth=%d" depth) "--no-single-branch"))
-                                                  ,(plist-get order :repo) ,repo))))
-                  ((zerop (call-process "git" nil buffer t "checkout"
-                                        (or (plist-get order :ref) "--"))))
-                  (emacs (concat invocation-directory invocation-name))
-                  ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
-                                        "--eval" "(byte-recompile-directory \".\" 0 'force)")))
-                  ((require 'elpaca))
-                  ((elpaca-generate-autoloads "elpaca" repo)))
-            (progn (message "%s" (buffer-string)) (kill-buffer buffer))
-          (error "%s" (with-current-buffer buffer (buffer-string))))
-      ((error) (warn "%s" err) (delete-directory repo 'recursive))))
-  (unless (require 'elpaca-autoloads nil t)
-    (require 'elpaca)
-    (elpaca-generate-autoloads "elpaca" repo)
-    (let ((load-source-file-function nil)) (load "./elpaca-autoloads"))))
-(add-hook 'after-init-hook #'elpaca-process-queues)
-(elpaca `(,@elpaca-order))
-(elpaca elpaca-use-package
-  ;; Enable use-package :ensure support for Elpaca.
-  (elpaca-use-package-mode))
+(load-theme 'modus-vivendi :no-confirm)
 
-(require 'org)
-(org-babel-load-file "~/.emacs.d/emacs.org")
+(setq initial-buffer-choice t)
+(setq initial-major-mode 'lisp-interaction-mode)
+(setq initial-scratch-message nil)
 
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(ocamlformat-enable 'enable-outside-detected-project)
- '(org-agenda-files nil)
- '(package-selected-packages
-   '(ace-jump-mode ace-window adaptive-wrap ag browse-kill-ring cider consult deft
-                   embark embark-consult exec-path-from-shell git-timemachine
-                   gptel haskell-mode magit marginalia markdown-mode
-                   material-theme mmm-mode orderless paredit projectile
-                   rainbow-delimiters scss-mode smart-mode-line solarized-theme
-                   swiper typescript-mode undo-tree vertico visual-fill-column
-                   visual-regexp web-mode yaml-mode yasnippet)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(markdown-header-face ((t (:inherit font-lock-function-name-face :weight bold :family "variable-pitch"))))
- '(markdown-header-face-1 ((t (:inherit markdown-header-face :height 1.7))))
- '(markdown-header-face-2 ((t (:inherit markdown-header-face :height 1.4))))
- '(markdown-header-face-3 ((t (:inherit markdown-header-face :height 1.2)))))
-(put 'narrow-to-region 'disabled nil)
+;; Disable custom by making it disposable
+(setq custom-file (make-temp-file "emacs-custom-"))
+
+(setq make-backup-files nil)
+(setq auto-save-default nil)
+
+(setq-default show-trailing-whitespace t)
+(global-set-key (kbd "C-c w") 'delete-trailing-whitespace)
+
+;; Bootstrap straight.el
+(defvar bootstrap-version)
+(let ((bootstrap-file
+       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+      (bootstrap-version 6))
+  (unless (file-exists-p bootstrap-file)
+    (with-current-buffer
+        (url-retrieve-synchronously
+         "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
+         'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
+
+;; Install use-package and use straight.el by default
+(straight-use-package 'use-package)
+(setq straight-use-package-by-default t)
+
+;; Packages
+
+(use-package magit
+  :bind ("C-x g" . magit-status)
+  :config
+  (setq magit-repository-directories '(("~/workspace/" . 1))))
+
+(use-package diff-hl
+  :hook ((after-init         . global-diff-hl-mode)
+         (dired-mode         . diff-hl-dired-mode)
+         (magit-pre-refresh  . diff-hl-magit-pre-refresh)
+         (magit-post-refresh . diff-hl-magit-post-refresh))
+  :custom
+  (diff-hl-draw-borders nil))
+
+(use-package undo-tree
+  :config
+  (global-undo-tree-mode)
+  :bind ("C-x C-u" . undo-tree-visualize))
+
+(use-package markdown-mode)
+
+;; Vertico completion stack
+(use-package savehist
+  :straight nil
+  :init (savehist-mode))
+
+(use-package vertico
+  :init (vertico-mode)
+  :custom
+  (vertico-count 15)
+  (vertico-cycle t)
+  (vertico-resize nil)
+  :bind (:map vertico-map
+         ("RET"   . vertico-directory-enter)
+         ("DEL"   . vertico-directory-delete-char)
+         ("M-DEL" . vertico-directory-delete-word)))
+
+(use-package orderless
+  :custom
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  (completion-category-overrides '((file (styles partial-completion)))))
+
+(use-package marginalia
+  :init (marginalia-mode)
+  :bind (:map minibuffer-local-map
+         ("M-A" . marginalia-cycle)))
+
+(use-package consult
+  :bind (("C-s"     . consult-line)
+         ("C-x b"   . consult-buffer)
+         ("M-y"     . consult-yank-pop)
+         ("M-g g"   . consult-goto-line)
+         ("M-g M-g" . consult-goto-line)
+         ("M-g i"   . consult-imenu)
+         ("M-g o"   . consult-outline)
+         ("M-s r"   . consult-ripgrep)
+         ("M-s f"   . consult-find))
+  :custom
+  (consult-narrow-key "<")
+  :config
+  (setq xref-show-xrefs-function #'consult-xref
+        xref-show-definitions-function #'consult-xref))
+
+(use-package embark
+  :bind (("C-."   . embark-act)
+         ("C-;"   . embark-dwim)
+         ("C-h B" . embark-bindings))
+  :config
+  (setq prefix-help-command #'embark-prefix-help-command))
+
+(use-package embark-consult
+  :hook (embark-collect-mode . consult-preview-at-point-mode))
+
+(use-package corfu
+  :custom
+  (corfu-auto t)
+  (corfu-auto-delay 0.2)
+  (corfu-auto-prefix 2)
+  (corfu-cycle t)
+  (corfu-preselect 'prompt)
+  :init (global-corfu-mode))
+
+(use-package avy
+  :straight t
+  :bind (("M-j"   . avy-goto-char-timer)
+         ("M-g l" . avy-goto-line)))
+
+(global-set-key (kbd "<f5>") 'revert-buffer-quick)
