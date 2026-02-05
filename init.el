@@ -62,7 +62,16 @@
          (magit-pre-refresh  . diff-hl-magit-pre-refresh)
          (magit-post-refresh . diff-hl-magit-post-refresh))
   :custom
-  (diff-hl-draw-borders nil))
+  (diff-hl-draw-borders nil)
+  :config
+  (defun my/diff-hl-update-all ()
+    "Update diff-hl in all buffers when Emacs gains focus."
+    (when (frame-focus-state)
+      (dolist (buf (buffer-list))
+        (with-current-buffer buf
+          (when (and diff-hl-mode buffer-file-name)
+            (diff-hl-update))))))
+  (add-function :after after-focus-change-function #'my/diff-hl-update-all))
 
 (use-package undo-tree
   :config
