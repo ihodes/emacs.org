@@ -17,6 +17,7 @@
 (setq-default show-trailing-whitespace t)
 (global-set-key (kbd "C-c w") 'delete-trailing-whitespace)
 
+
 ;; Bootstrap straight.el
 (defvar bootstrap-version)
 (let ((bootstrap-file
@@ -34,6 +35,18 @@
 ;; Install use-package and use straight.el by default
 (straight-use-package 'use-package)
 (setq straight-use-package-by-default t)
+
+(use-package diminish
+  :straight t
+  :config
+  (diminish 'auto-revert-mode)
+  (diminish 'eldoc-mode)
+  (diminish 'visual-line-mode))
+
+(which-function-mode 1)
+(column-number-mode 1)
+(size-indication-mode 1)
+
 
 ;; Packages
 
@@ -56,7 +69,37 @@
   (global-undo-tree-mode)
   :bind ("C-x C-u" . undo-tree-visualize))
 
-(use-package markdown-mode)
+(use-package markdown-mode
+  :hook ((markdown-mode . visual-line-mode)
+         (markdown-mode . visual-fill-column-mode)))
+
+(use-package web-mode
+  :mode ("\\.html\\'" "\\.css\\'" "\\.jsx\\'" "\\.tsx\\'" "\\.vue\\'"))
+
+(use-package typescript-mode
+  :mode "\\.ts\\'")
+
+(use-package emmet-mode
+  :hook ((html-mode  . emmet-mode)
+         (css-mode   . emmet-mode)
+         (web-mode   . emmet-mode)
+         (jsx-mode   . emmet-mode)))
+
+(use-package eglot
+  :hook ((python-mode     . eglot-ensure)
+         (js-mode         . eglot-ensure)
+         (typescript-mode . eglot-ensure))
+  :custom
+  (eglot-autoshutdown t)
+  (eglot-events-buffer-size 0)
+  :config
+  (setq eglot-ignored-server-capabilities '(:inlayHintProvider)))
+
+(use-package visual-fill-column
+  :custom
+  (visual-fill-column-width 100)
+  :hook ((text-mode . visual-line-mode)
+         (text-mode . visual-fill-column-mode)))
 
 (use-package paredit
   :hook ((emacs-lisp-mode lisp-mode scheme-mode) . paredit-mode))
@@ -127,5 +170,16 @@
   :straight t
   :bind (("M-j"   . avy-goto-char-timer)
          ("M-l" . avy-goto-line)))
+
+(use-package gptel
+  :config
+  (setq gptel-model 'claude-sonnet-4-20250514)
+  (setq gptel-backend (gptel-make-anthropic "Claude"
+                        :stream t
+                        :key #'gptel-api-key-from-auth-source))
+  :bind (("C-c RET"       . gptel-send)
+         ("C-c <C-return>" . gptel-menu)
+         ("C-c ]"         . gptel-rewrite)
+         ("C-c g"         . gptel)))
 
 (global-set-key (kbd "<f5>") 'revert-buffer-quick)

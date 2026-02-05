@@ -12,6 +12,7 @@
 
 (setq initial-frame-alist `((horizontal-scroll-bars . nil)
                             (menu-bar-lines . 0)
+			    (fullscreen . maximized)
 			    (font . "Menlo-15")
                             (tool-bar-lines . 0)
 			    (width . (text-pixels . 800))
