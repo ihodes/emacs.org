@@ -10,6 +10,10 @@
 (setq make-backup-files nil)
 (setq auto-save-default nil)
 
+(global-auto-revert-mode 1)
+(setq auto-revert-use-notify t)
+(setq auto-revert-avoid-polling t)
+
 (setq-default show-trailing-whitespace t)
 (global-set-key (kbd "C-c w") 'delete-trailing-whitespace)
 
@@ -34,7 +38,8 @@
 ;; Packages
 
 (use-package magit
-  :bind ("C-x g" . magit-status)
+  :bind (("C-x g" . magit-status)
+         ("C-x [" . magit-diff-buffer-file))
   :config
   (setq magit-repository-directories '(("~/workspace/" . 1))))
 
@@ -52,6 +57,9 @@
   :bind ("C-x C-u" . undo-tree-visualize))
 
 (use-package markdown-mode)
+
+(use-package paredit
+  :hook ((emacs-lisp-mode lisp-mode scheme-mode) . paredit-mode))
 
 ;; Vertico completion stack
 (use-package savehist
@@ -118,6 +126,6 @@
 (use-package avy
   :straight t
   :bind (("M-j"   . avy-goto-char-timer)
-         ("M-g l" . avy-goto-line)))
+         ("M-l" . avy-goto-line)))
 
 (global-set-key (kbd "<f5>") 'revert-buffer-quick)
