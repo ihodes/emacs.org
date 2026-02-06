@@ -150,11 +150,17 @@
                    nil nil #'equal)
         '("pyright-langserver" "--stdio")))
 
+(use-package flymake
+  :straight nil
+  :custom
+  (flymake-mode-line-format '(" " flymake-mode-line-counters)))
+
 (use-package python
   :straight nil
   :custom
   (python-shell-interpreter "uv")
   (python-shell-interpreter-args "run python")
+  :hook (inferior-python-mode . (lambda () (setq-local show-trailing-whitespace nil)))
   :bind (:map python-mode-map
          ("M-n" . python-nav-forward-defun)
          ("M-p" . python-nav-backward-defun)))
