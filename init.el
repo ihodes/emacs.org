@@ -10,6 +10,9 @@
 (setq make-backup-files nil)
 (setq auto-save-default nil)
 
+(global-set-key (kbd "<C-wheel-up>") 'ignore)
+(global-set-key (kbd "<C-wheel-down>") 'ignore)
+
 (global-auto-revert-mode 1)
 (setq auto-revert-use-notify t)
 (setq auto-revert-avoid-polling t)
