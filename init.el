@@ -116,7 +116,7 @@
 
 (use-package magit
   :bind (("C-x g" . magit-status)
-         ("C-x [" . magit-diff-buffer-file))
+         ("C-x |" . magit-diff-buffer-file))
   :config
   (setq magit-repository-directories '(("~/workspace/" . 1))))
 
@@ -131,10 +131,16 @@
   :bind
   (("s-[" . diff-hl-previous-hunk)
    ("s-]" . diff-hl-next-hunk)
-   ("s-{" . diff-hl-show-previous-hunk)
-   ("s-}" . diff-hl-show-next-hunk)
-   ("s-\\" . diff-hl-show-hunk))
+   ("s-{" . diff-hl-show-hunk-previous)
+   ("s-}" . diff-hl-show-hunk-next)
+   ("s-\\" . ihds/diff-hl-toggle-show-hunk))
   :config
+  (defun ihds/diff-hl-toggle-show-hunk ()
+    "Toggle the diff-hl inline hunk popup."
+    (interactive)
+    (if diff-hl-show-hunk-inline--current-popup
+	(diff-hl-show-hunk-inline-hide)
+      (diff-hl-show-hunk)))
   (defun my/diff-hl-update-all ()
     "Update diff-hl in all buffers when Emacs gains focus."
     (when (frame-focus-state)
@@ -148,10 +154,14 @@
 (use-package undo-tree
   :config
   (global-undo-tree-mode)
+  (setq undo-tree-auto-save-history nil)
+  (define-key undo-tree-map (kbd "C-x u") #'undo)
   :bind
-  ("C-x C-u" . undo-tree-visualize)
-  ("C-x u" . undo))
+  ("C-x C-u" . undo-tree-visualize))
 
+(use-package adaptive-wrap
+  :straight t
+  :hook (markdown-mode . adaptive-wrap-prefix-mode))
 
 (use-package markdown-mode
   :hook ((markdown-mode . visual-line-mode)
