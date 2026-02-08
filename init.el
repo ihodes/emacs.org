@@ -290,6 +290,11 @@
          ("M-l" . avy-goto-line)))
 
 
+(use-package windmove
+  :config
+  (windmove-default-keybindings 'super))
+
+
 (use-package gptel
   :config
   (setq gptel-model 'claude-sonnet-4-20250514)
