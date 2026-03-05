@@ -453,6 +453,12 @@ end try'" filename))))
   (set-face-attribute 'mode-line nil
                       :background "#f38ba8"
                       :foreground "#1e1e2e")
+  (set-face-attribute 'powerline-active1 nil
+                      :background "#585b70"
+                      :foreground "#cdd6f4")
+  (set-face-attribute 'powerline-active2 nil
+                      :background "#313244"
+                      :foreground "#cdd6f4")
   (powerline-reset))
 
 (use-package corfu
