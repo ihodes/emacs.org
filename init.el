@@ -155,33 +155,22 @@ end try'" filename))))
   (add-to-list 'magit-section-initial-visibility-alist '(recent . show))
   (add-to-list 'magit-section-initial-visibility-alist '(untracked . show))
 
-  (defvar ihds/magit--watches nil
-    "Alist of (gitdir . watch-descriptor) for auto-refresh.")
   (defvar ihds/magit--refresh-timer nil)
 
-  (defun ihds/magit--debounced-refresh (_event)
+  (defun ihds/magit-refresh-all-debounced ()
     "Refresh all magit buffers, debounced."
     (when ihds/magit--refresh-timer
       (cancel-timer ihds/magit--refresh-timer))
     (setq ihds/magit--refresh-timer
-          (run-with-timer 0.3 nil
+          (run-with-timer 0.5 nil
             (lambda ()
               (dolist (buf (buffer-list))
                 (with-current-buffer buf
                   (when (derived-mode-p 'magit-mode)
                     (magit-refresh-buffer))))))))
 
-  (defun ihds/magit-watch-repo ()
-    "Watch .git dir of current repo for changes."
-    (let ((gitdir (magit-gitdir)))
-      (when (and gitdir (not (assoc gitdir ihds/magit--watches)))
-        (ignore-errors
-          (let ((desc (file-notify-add-watch
-                       gitdir '(change attribute-change)
-                       #'ihds/magit--debounced-refresh)))
-            (push (cons gitdir desc) ihds/magit--watches))))))
-
-  (add-hook 'magit-status-mode-hook #'ihds/magit-watch-repo))
+  (add-hook 'after-save-hook #'ihds/magit-refresh-all-debounced)
+  (add-hook 'after-revert-hook #'ihds/magit-refresh-all-debounced))
 
 
 (use-package diff-hl
