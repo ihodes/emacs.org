@@ -1,5 +1,3 @@
-(load-theme 'modus-vivendi :no-confirm)
-
 (setq initial-buffer-choice t)
 (setq initial-major-mode 'lisp-interaction-mode)
 (setq initial-scratch-message nil)
@@ -51,6 +49,13 @@
 (setq straight-use-package-by-default t)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(use-package catppuccin-theme
+  :straight t
+  :custom
+  (catppuccin-flavor 'mocha)
+  :config
+  (load-theme 'catppuccin :no-confirm))
+
 
 (use-package exec-path-from-shell
   :straight t
@@ -60,11 +65,37 @@
 
 (use-package vterm
   :straight t
-  :bind ("<f2>" . vterm)
   :hook (vterm-mode . (lambda () (setq-local show-trailing-whitespace nil)))
   :custom
   (vterm-max-scrollback 100000)
-  (vterm-shell "/bin/zsh"))
+  (vterm-shell "/bin/zsh")
+  :config
+  (defun ihds/vterm-paste-image ()
+    "Save clipboard image to a temp file and insert the path into vterm."
+    (interactive)
+    (let* ((filename (format-time-string "/tmp/emacs-clipboard-%Y%m%dT%H%M%S.png"))
+           (result (shell-command-to-string
+                    (format "osascript -e '
+set theFile to (POSIX file \"%s\")
+try
+  set theImage to the clipboard as «class PNGf»
+  set fileRef to open for access theFile with write permission
+  set eof fileRef to 0
+  write theImage to fileRef
+  close access fileRef
+  return \"ok\"
+on error
+  return \"no image\"
+end try'" filename))))
+      (if (string-prefix-p "ok" (string-trim result))
+          (vterm-insert filename)
+        (message "No image found on clipboard"))))
+  :bind (:map vterm-mode-map
+              ("C-M-s-v" . ihds/vterm-paste-image)))
+
+(use-package multi-vterm
+  :straight t
+  :bind ("<f2>" . multi-vterm))
 
 
 (use-package project
@@ -118,7 +149,10 @@
   :bind (("C-x g" . magit-status)
          ("C-x |" . magit-diff-buffer-file))
   :config
-  (setq magit-repository-directories '(("~/workspace/" . 1))))
+  (setq magit-repository-directories '(("~/workspace/" . 1)))
+  (magit-add-section-hook 'magit-status-sections-hook 'magit-insert-worktrees nil t)
+  (add-to-list 'magit-section-initial-visibility-alist '(recent . show))
+  (add-to-list 'magit-section-initial-visibility-alist '(untracked . show)))
 
 
 (use-package diff-hl
@@ -162,6 +196,9 @@
 (use-package adaptive-wrap
   :straight t
   :hook (markdown-mode . adaptive-wrap-prefix-mode))
+
+(use-package edit-indirect
+  :straight t)
 
 (use-package markdown-mode
   :hook ((markdown-mode . visual-line-mode)
@@ -267,7 +304,8 @@
          ("M-g i"   . consult-imenu)
          ("M-g o"   . consult-outline)
          ("M-s r"   . consult-ripgrep)
-         ("M-s f"   . consult-find))
+         ("M-s f"   . consult-find)
+         ("C-x p b" . consult-project-buffer))
   :custom
   (consult-narrow-key "<")
   :config
@@ -287,6 +325,135 @@
 ;; end vertico stack
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(use-package tabspaces
+  :straight t
+  :hook (after-init . tabspaces-mode)
+  :custom
+  (tabspaces-use-filtered-buffers-as-default t)
+  (tabspaces-default-tab "Default")
+  (tabspaces-remove-to-default t)
+  (tabspaces-include-buffers '("*scratch*"))
+  (tabspaces-session t)
+  (tabspaces-session-auto-restore t)
+  (tabspaces-session-project-session-store nil)
+  (tab-bar-new-tab-choice "*scratch*")
+  (tab-bar-tab-name-function #'tabspaces--name-tab-by-project-or-default)
+  :config
+  ;; Window management
+  (customize-set-variable 'display-buffer-base-action
+    '((display-buffer-reuse-window display-buffer-same-window)
+      (reusable-frames . t)))
+  (customize-set-variable 'even-window-sizes nil)
+
+  ;; Consult integration: scope consult-buffer to current workspace
+  (with-eval-after-load 'consult
+    (plist-put consult-source-buffer :hidden t)
+    (plist-put consult-source-buffer :default nil)
+    (defvar consult--source-workspace
+      (list :name "Workspace Buffers"
+            :narrow ?w
+            :history 'buffer-name-history
+            :category 'buffer
+            :state #'consult--buffer-state
+            :default t
+            :items (lambda () (consult--buffer-query
+                               :predicate #'tabspaces--local-buffer-p
+                               :sort 'visibility
+                               :as #'buffer-name))))
+    (add-to-list 'consult-buffer-sources 'consult--source-workspace))
+
+  ;; Track previous workspace for quick switching
+  (defvar ihds/tabspaces--previous-tab nil)
+  (defun ihds/tabspaces--track-previous (&rest _)
+    (setq ihds/tabspaces--previous-tab (tabspaces--current-tab-name)))
+  (advice-add 'tab-bar-switch-to-tab :before #'ihds/tabspaces--track-previous)
+
+  (defun ihds/tabspaces-switch-with-default ()
+    "Like `tabspaces-switch-or-create-workspace' but defaults to previous workspace."
+    (interactive)
+    (let* ((tabs (tabspaces--list-tabspaces))
+           (default ihds/tabspaces--previous-tab)
+           (prompt (if default
+                      (format "Switch to workspace (default %s): " default)
+                    "Switch to workspace: "))
+           (choice (completing-read prompt tabs nil t nil nil default)))
+      (tab-bar-switch-to-tab choice)))
+
+  ;; Transient menu
+  (require 'transient)
+  (defun ihds/tabspaces-overview ()
+    "Return a string showing current workspace and a table of all workspaces."
+    (let* ((current (tabspaces--current-tab-name))
+           (tabs (tabspaces--list-tabspaces))
+           (header (format "Workspace: %s\n\n" (propertize current 'face 'transient-heading)))
+           (rows (mapconcat
+                  (lambda (name)
+                    (let* ((idx (tab-bar--tab-index-by-name name))
+                           (bufs (length (tabspaces--buffer-list nil idx)))
+                           (marker (if (string= name current) "*" " ")))
+                      (format " %s %-20s %3d buffers" marker name bufs)))
+                  tabs "\n")))
+      (concat header rows)))
+
+  (defun ihds/tabspaces-move-buffer-to-tab (buf-name tab-name)
+    "Move buffer BUF-NAME to workspace TAB-NAME, removing it from the current one."
+    (interactive
+     (list (buffer-name (current-buffer))
+           (completing-read "Move to workspace: " (tabspaces--list-tabspaces) nil t)))
+    (let ((buf (get-buffer buf-name))
+          (current-tab (tabspaces--current-tab-name)))
+      (when (and buf (not (string= tab-name current-tab)))
+        ;; Switch to target tab, add buffer, switch back, remove from current
+        (tab-bar-switch-to-tab tab-name)
+        (switch-to-buffer buf)
+        (tab-bar-switch-to-tab current-tab)
+        (tabspaces-remove-current-buffer buf))))
+
+  (transient-define-prefix ihds/tabspaces-transient ()
+    "Workspace management."
+    [:description ihds/tabspaces-overview
+     ["Switch"
+      ("s" "switch/create" tabspaces-switch-or-create-workspace)
+      ("o" "open project" tabspaces-open-or-create-project-and-workspace)
+      ("t" "buffer & tab" tabspaces-switch-buffer-and-tab)]
+     ["Buffers"
+      ("b" "switch buffer" tabspaces-switch-to-buffer)
+      ("m" "move to workspace" ihds/tabspaces-move-buffer-to-tab)
+      ("r" "remove current" tabspaces-remove-current-buffer)
+      ("R" "remove selected" tabspaces-remove-selected-buffer)
+      ("C" "clear all" tabspaces-clear-buffers)]
+     ["Manage"
+      ("d" "close workspace" tabspaces-close-workspace)
+      ("k" "kill & close" tabspaces-kill-buffers-close-workspace)]
+     ["Session"
+      ("C-s" "save session" tabspaces-save-session)
+      ("C-l" "restore session" tabspaces-restore-session)
+      ("C-p" "save project session" tabspaces-save-current-project-session)]]
+    (interactive)
+    (transient-setup 'ihds/tabspaces-transient))
+
+  :bind
+  ("C-M-s-p" . ihds/tabspaces-transient)
+  ("C-M-s-s" . ihds/tabspaces-switch-with-default)
+  ("C-x p p" . tabspaces-open-or-create-project-and-workspace))
+
+(with-eval-after-load 'tab-bar
+  (set-face-attribute 'tab-bar-tab nil
+                      :weight 'bold
+                      :underline t
+                      :background (face-background 'highlight))
+  (set-face-attribute 'tab-bar-tab-inactive nil
+                      :weight 'normal
+                      :underline nil))
+
+(use-package powerline
+  :config
+  (powerline-default-theme)
+  (set-face-attribute 'mode-line nil
+                      :background "#f38ba8"
+                      :foreground "#1e1e2e")
+  (powerline-reset))
 
 (use-package corfu
   :custom
