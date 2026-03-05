@@ -19,13 +19,6 @@
 (setq auto-revert-avoid-polling nil)
 (setq auto-revert-interval 1)
 
-(defun ihds/revert-and-refresh-on-focus ()
-  "Revert file buffers and refresh magit when Emacs gains focus."
-  (when (frame-focus-state)
-    (auto-revert-buffers)
-    (when (fboundp 'magit-refresh-all)
-      (magit-refresh-all))))
-(add-function :after after-focus-change-function #'ihds/revert-and-refresh-on-focus)
 
 (which-function-mode 1)
 (column-number-mode 1)
@@ -160,7 +153,35 @@ end try'" filename))))
   (setq magit-repository-directories '(("~/workspace/" . 1)))
   (magit-add-section-hook 'magit-status-sections-hook 'magit-insert-worktrees nil t)
   (add-to-list 'magit-section-initial-visibility-alist '(recent . show))
-  (add-to-list 'magit-section-initial-visibility-alist '(untracked . show)))
+  (add-to-list 'magit-section-initial-visibility-alist '(untracked . show))
+
+  (defvar ihds/magit--watches nil
+    "Alist of (gitdir . watch-descriptor) for auto-refresh.")
+  (defvar ihds/magit--refresh-timer nil)
+
+  (defun ihds/magit--debounced-refresh (_event)
+    "Refresh all magit buffers, debounced."
+    (when ihds/magit--refresh-timer
+      (cancel-timer ihds/magit--refresh-timer))
+    (setq ihds/magit--refresh-timer
+          (run-with-timer 0.3 nil
+            (lambda ()
+              (dolist (buf (buffer-list))
+                (with-current-buffer buf
+                  (when (derived-mode-p 'magit-mode)
+                    (magit-refresh-buffer))))))))
+
+  (defun ihds/magit-watch-repo ()
+    "Watch .git dir of current repo for changes."
+    (let ((gitdir (magit-gitdir)))
+      (when (and gitdir (not (assoc gitdir ihds/magit--watches)))
+        (ignore-errors
+          (let ((desc (file-notify-add-watch
+                       gitdir '(change attribute-change)
+                       #'ihds/magit--debounced-refresh)))
+            (push (cons gitdir desc) ihds/magit--watches))))))
+
+  (add-hook 'magit-status-mode-hook #'ihds/magit-watch-repo))
 
 
 (use-package diff-hl
@@ -177,6 +198,7 @@ end try'" filename))))
    ("s-}" . diff-hl-show-hunk-next)
    ("s-\\" . ihds/diff-hl-toggle-show-hunk))
   :config
+  (require 'diff-hl-show-hunk-inline)
   (defun ihds/diff-hl-toggle-show-hunk ()
     "Toggle the diff-hl inline hunk popup."
     (interactive)
