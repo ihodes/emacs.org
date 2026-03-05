@@ -1,3 +1,6 @@
+(add-to-list 'default-frame-alist '(undecorated . t))
+(setq frame-resize-pixelwise t)
+
 (setq initial-buffer-choice t)
 (setq initial-major-mode 'lisp-interaction-mode)
 (setq initial-scratch-message nil)
@@ -13,7 +16,16 @@
 
 (global-auto-revert-mode 1)
 (setq auto-revert-use-notify t)
-(setq auto-revert-avoid-polling t)
+(setq auto-revert-avoid-polling nil)
+(setq auto-revert-interval 1)
+
+(defun ihds/revert-and-refresh-on-focus ()
+  "Revert file buffers and refresh magit when Emacs gains focus."
+  (when (frame-focus-state)
+    (auto-revert-buffers)
+    (when (fboundp 'magit-refresh-all)
+      (magit-refresh-all))))
+(add-function :after after-focus-change-function #'ihds/revert-and-refresh-on-focus)
 
 (which-function-mode 1)
 (column-number-mode 1)
@@ -50,11 +62,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (use-package catppuccin-theme
-  :straight t
-  :custom
-  (catppuccin-flavor 'mocha)
-  :config
-  (load-theme 'catppuccin :no-confirm))
+  :straight t)
 
 
 (use-package exec-path-from-shell
@@ -433,7 +441,22 @@ end try'" filename))))
     (interactive)
     (transient-setup 'ihds/tabspaces-transient))
 
+  (defun ihds/tabspaces-close-workspace-confirm ()
+    "Close current workspace after confirmation."
+    (interactive)
+    (if (<= (length (tabspaces--list-tabspaces)) 1)
+        (message "Can't close the last workspace")
+      (when (y-or-n-p (format "Close workspace '%s'? " (tabspaces--current-tab-name)))
+        (tabspaces-close-workspace))))
+
+  ;; s-1 … s-9 jump to workspace by position
+  (dotimes (i 9)
+    (let ((n (1+ i)))
+      (global-set-key (kbd (format "s-%d" n))
+                      `(lambda () (interactive) (tab-bar-select-tab ,n)))))
+
   :bind
+  ("s-w" . ihds/tabspaces-close-workspace-confirm)
   ("C-M-s-p" . ihds/tabspaces-transient)
   ("C-M-s-s" . ihds/tabspaces-switch-with-default)
   ("C-x p p" . tabspaces-open-or-create-project-and-workspace))
@@ -449,17 +472,38 @@ end try'" filename))))
 
 (use-package powerline
   :config
-  (powerline-default-theme)
-  (set-face-attribute 'mode-line nil
-                      :background "#f38ba8"
-                      :foreground "#1e1e2e")
-  (set-face-attribute 'powerline-active1 nil
-                      :background "#585b70"
-                      :foreground "#cdd6f4")
-  (set-face-attribute 'powerline-active2 nil
-                      :background "#313244"
-                      :foreground "#cdd6f4")
+  (powerline-default-theme))
+
+(defun ihds/apply-catppuccin-powerline ()
+  "Set powerline faces for the current catppuccin flavor."
+  (pcase catppuccin-flavor
+    ('mocha
+     (set-face-attribute 'mode-line nil :background "#f38ba8" :foreground "#1e1e2e")
+     (set-face-attribute 'powerline-active1 nil :background "#585b70" :foreground "#cdd6f4")
+     (set-face-attribute 'powerline-active2 nil :background "#313244" :foreground "#cdd6f4"))
+    ('frappe
+     (set-face-attribute 'mode-line nil :background "#e78284" :foreground "#303446")
+     (set-face-attribute 'powerline-active1 nil :background "#626880" :foreground "#c6d0f5")
+     (set-face-attribute 'powerline-active2 nil :background "#414559" :foreground "#c6d0f5")))
   (powerline-reset))
+
+(use-package auto-dark
+  :straight t
+  :custom
+  (auto-dark-dark-theme nil)
+  (auto-dark-light-theme nil)
+  :config
+  (add-hook 'auto-dark-dark-mode-hook
+            (lambda ()
+              (setq catppuccin-flavor 'mocha)
+              (load-theme 'catppuccin :no-confirm)
+              (ihds/apply-catppuccin-powerline)))
+  (add-hook 'auto-dark-light-mode-hook
+            (lambda ()
+              (setq catppuccin-flavor 'frappe)
+              (load-theme 'catppuccin :no-confirm)
+              (ihds/apply-catppuccin-powerline)))
+  (auto-dark-mode t))
 
 (use-package corfu
   :custom
