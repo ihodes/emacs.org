@@ -484,7 +484,8 @@ var pb = $.NSPasteboard.generalPasteboard;
      ["Session"
       ("C-s" "save session" tabspaces-save-session)
       ("C-l" "restore session" tabspaces-restore-session)
-      ("C-p" "save project session" tabspaces-save-current-project-session)]]
+      ("C-p" "save project session" tabspaces-save-current-project-session)]
+     ["" ("q" "quit" transient-quit-one)]]
     (interactive)
     (transient-setup 'ihds/tabspaces-transient))
 
