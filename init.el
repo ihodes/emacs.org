@@ -19,8 +19,7 @@
 (global-set-key (kbd "s-t") 'ignore)
 
 (global-auto-revert-mode 1)
-(setq auto-revert-use-notify t)
-(setq auto-revert-avoid-polling nil)
+(setq auto-revert-use-notify nil)
 (setq auto-revert-interval 1)
 
 
@@ -79,20 +78,25 @@
     "Save clipboard image to a temp file and insert the path into vterm."
     (interactive)
     (let* ((filename (format-time-string "/tmp/emacs-clipboard-%Y%m%dT%H%M%S.png"))
-           (result (shell-command-to-string
-                    (format "osascript -e '
-set theFile to (POSIX file \"%s\")
-try
-  set theImage to the clipboard as «class PNGf»
-  set fileRef to open for access theFile with write permission
-  set eof fileRef to 0
-  write theImage to fileRef
-  close access fileRef
-  return \"ok\"
-on error
-  return \"no image\"
-end try'" filename))))
-      (if (string-prefix-p "ok" (string-trim result))
+           (result (string-trim
+                    (shell-command-to-string
+                     (format "osascript -l JavaScript -e '
+ObjC.import(\"AppKit\");
+var pb = $.NSPasteboard.generalPasteboard;
+var data = pb.dataForType($.NSPasteboardTypePNG);
+if (data.isNil()) {
+  var tiff = pb.dataForType($.NSPasteboardTypeTIFF);
+  if (!tiff.isNil()) {
+    var img = $.NSBitmapImageRep.imageRepWithData(tiff);
+    data = img.representationUsingTypeProperties($.NSBitmapImageFileTypePNG, $());
+  }
+}
+if (!data.isNil()) {
+  data.writeToFileAtomically(\"%s\", true);
+  \"ok\";
+} else { \"no image\"; }
+'" filename)))))
+      (if (string-prefix-p "ok" result)
           (vterm-insert filename)
         (message "No image found on clipboard"))))
   :bind (:map vterm-mode-map
