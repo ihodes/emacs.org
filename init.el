@@ -13,6 +13,10 @@
 
 (global-set-key (kbd "<C-wheel-up>") 'ignore)
 (global-set-key (kbd "<C-wheel-down>") 'ignore)
+(global-set-key (kbd "<C-tab>") 'ignore)
+(global-set-key (kbd "<M-tab>") 'ignore)
+(global-set-key (kbd "s-s") 'ignore)
+(global-set-key (kbd "s-t") 'ignore)
 
 (global-auto-revert-mode 1)
 (setq auto-revert-use-notify t)
@@ -221,7 +225,19 @@ end try'" filename))))
 
 (use-package markdown-mode
   :hook ((markdown-mode . visual-line-mode)
-         (markdown-mode . visual-fill-column-mode)))
+         (markdown-mode . visual-fill-column-mode))
+  :config
+  (defun ihds/markdown-insert-code-block ()
+    "Insert a fenced code block and place cursor after opening fence."
+    (interactive)
+    (insert "```\n\n```")
+    (forward-line -1)
+    (end-of-line))
+  :bind (:map markdown-mode-map
+              ("s-b" . markdown-insert-bold)
+              ("s-i" . markdown-insert-italic)
+              ("s-k" . markdown-insert-link)
+              ("s-`" . ihds/markdown-insert-code-block)))
 
 
 (use-package web-mode
