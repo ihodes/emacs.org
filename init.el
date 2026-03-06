@@ -525,14 +525,26 @@ var pb = $.NSPasteboard.generalPasteboard;
 (defun ihds/apply-catppuccin-powerline ()
   "Set powerline faces for the current catppuccin flavor."
   (pcase catppuccin-flavor
-    ('mocha
-     (set-face-attribute 'mode-line nil :background "#f38ba8" :foreground "#1e1e2e")
-     (set-face-attribute 'powerline-active1 nil :background "#585b70" :foreground "#cdd6f4")
-     (set-face-attribute 'powerline-active2 nil :background "#313244" :foreground "#cdd6f4"))
+    ('latte
+     (set-face-attribute 'mode-line nil :background "#dc8a78" :foreground "#4c4f69")
+     (set-face-attribute 'powerline-active1 nil :background "#bcc0cc" :foreground "#4c4f69")
+     (set-face-attribute 'powerline-active2 nil :background "#ccd0da" :foreground "#4c4f69")
+     (set-face-attribute 'which-func nil :foreground "#6c6f85" :weight 'bold))
     ('frappe
-     (set-face-attribute 'mode-line nil :background "#e78284" :foreground "#303446")
+     (set-face-attribute 'mode-line nil :background "#f2d5cf" :foreground "#232634")
      (set-face-attribute 'powerline-active1 nil :background "#626880" :foreground "#c6d0f5")
-     (set-face-attribute 'powerline-active2 nil :background "#414559" :foreground "#c6d0f5")))
+     (set-face-attribute 'powerline-active2 nil :background "#414559" :foreground "#c6d0f5")
+     (set-face-attribute 'which-func nil :foreground "#a5adce" :weight 'bold))
+    ('macchiato
+     (set-face-attribute 'mode-line nil :background "#f4dbd6" :foreground "#181926")
+     (set-face-attribute 'powerline-active1 nil :background "#5b6078" :foreground "#cad3f5")
+     (set-face-attribute 'powerline-active2 nil :background "#363a4f" :foreground "#cad3f5")
+     (set-face-attribute 'which-func nil :foreground "#a5adcb" :weight 'bold))
+    ('mocha
+     (set-face-attribute 'mode-line nil :background "#f5e0dc" :foreground "#11111b")
+     (set-face-attribute 'powerline-active1 nil :background "#585b70" :foreground "#cdd6f4")
+     (set-face-attribute 'powerline-active2 nil :background "#313244" :foreground "#cdd6f4")
+     (set-face-attribute 'which-func nil :foreground "#a6adc8" :weight 'bold)))
   (powerline-reset))
 
 (use-package auto-dark
