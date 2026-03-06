@@ -116,8 +116,7 @@ var pb = $.NSPasteboard.generalPasteboard;
         (vterm-yank))))
 
   :bind (:map vterm-mode-map
-              ("s-v" . ihds/vterm-smart-paste)
-              ("C-M-s-v" . ihds/vterm-paste-image)))
+              ("s-v" . ihds/vterm-smart-paste)))
 
 (use-package multi-vterm
   :straight t
@@ -505,8 +504,8 @@ var pb = $.NSPasteboard.generalPasteboard;
 
   :bind
   ("s-w" . ihds/tabspaces-close-workspace-confirm)
-  ("C-M-s-p" . ihds/tabspaces-transient)
-  ("C-M-s-s" . ihds/tabspaces-switch-with-default)
+  ("C-M-s-P" . ihds/tabspaces-transient)
+  ("C-M-s-S" . ihds/tabspaces-switch-with-default)
   ("C-x p p" . tabspaces-open-or-create-project-and-workspace))
 
 (with-eval-after-load 'tab-bar
