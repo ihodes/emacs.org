@@ -22,3 +22,6 @@ ein-lisp/
 /org-persist/
 /straight/
 /history
+/eln-cache/
+/projects
+tabsession.el
