@@ -99,7 +99,24 @@ if (!data.isNil()) {
       (if (string-prefix-p "ok" result)
           (vterm-insert filename)
         (message "No image found on clipboard"))))
+
+  (defun ihds/vterm-smart-paste ()
+    "Paste image path if clipboard has an image, otherwise normal vterm yank."
+    (interactive)
+    (let ((has-image (string-prefix-p "true"
+                      (string-trim
+                       (shell-command-to-string
+                        "osascript -l JavaScript -e '
+ObjC.import(\"AppKit\");
+var pb = $.NSPasteboard.generalPasteboard;
+!pb.dataForType($.NSPasteboardTypePNG).isNil() || !pb.dataForType($.NSPasteboardTypeTIFF).isNil();
+'")))))
+      (if has-image
+          (ihds/vterm-paste-image)
+        (vterm-yank))))
+
   :bind (:map vterm-mode-map
+              ("s-v" . ihds/vterm-smart-paste)
               ("C-M-s-v" . ihds/vterm-paste-image)))
 
 (use-package multi-vterm
