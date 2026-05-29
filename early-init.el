@@ -13,7 +13,7 @@
 (setq initial-frame-alist `((horizontal-scroll-bars . nil)
                             (menu-bar-lines . 0)
 			    (fullscreen . maximized)
-			    (font . "Menlo-15")
+			    (font . ,(if (eq system-type 'darwin) "Menlo-15" "DejaVu Sans Mono-12"))
                             (tool-bar-lines . 0)
 			    (width . (text-pixels . 800))
                             (height . (text-pixels . 900))
